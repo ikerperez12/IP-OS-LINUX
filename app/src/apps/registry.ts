@@ -1,5 +1,5 @@
 // ============================================================
-// App Registry — All 54 Apps
+// App Registry - All 55 Apps
 // ============================================================
 
 import type { AppDefinition } from '@/types';
@@ -476,7 +476,7 @@ export const APP_REGISTRY: AppDefinition[] = [
     minSize: { width: 400, height: 320 },
   },
 
-  // ======== CREATIVE (4) ========
+  // ======== CREATIVE (5) ========
   {
     id: 'drawing',
     name: 'Drawing',
@@ -513,6 +513,17 @@ export const APP_REGISTRY: AppDefinition[] = [
     defaultSize: { width: 640, height: 480 },
     minSize: { width: 400, height: 320 },
   },
+  {
+    id: 'matrixrain',
+    name: 'Matrix Rain',
+    icon: 'Droplets',
+    category: 'Creative',
+    description: 'Interactive cinematic code rain visualizer',
+    defaultSize: { width: 760, height: 520 },
+    minSize: { width: 420, height: 320 },
+    accent: '#22C55E',
+    featuredOnDesktop: true,
+  },
 ];
 
 export const getAppById = (id: string): AppDefinition | undefined =>
@@ -526,5 +537,7 @@ export const getDefaultDockApps = (): string[] => [
   'terminal',
   'texteditor',
   'browser',
+  'musicplayer',
+  'matrixrain',
   'settings',
 ];
