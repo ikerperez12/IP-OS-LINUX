@@ -3,7 +3,7 @@
 // ============================================================
 
 import React, { createContext, useContext, useReducer, useCallback } from 'react';
-import type { OSState, OSAction, Window, DesktopIcon, Notification, DockItem, WindowState } from '@/types';
+import type { OSState, OSAction, Window, DesktopIcon, Notification, DockItem, WindowState, UIPreferences } from '@/types';
 import { APP_REGISTRY, getAppById, getDefaultDockApps } from '@/apps/registry';
 
 // ---- Helpers ----
@@ -11,12 +11,33 @@ const generateId = () => Math.random().toString(36).slice(2) + Date.now().toStri
 
 const TOP_PANEL_HEIGHT = 28;
 
+const isTabletViewport = () => {
+  if (typeof window === 'undefined') return false;
+  return window.innerWidth <= 900 || window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+};
+
+const prefersReducedMotion = () => {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+};
+
+const defaultUIPreferences: UIPreferences = {
+  reduceMotion: prefersReducedMotion(),
+  blurIntensity: 28,
+  wallpaperQuality: 'high',
+  iconScale: 1,
+  tabletMode: isTabletViewport(),
+};
+
+const supabaseConfigured = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+
 const createWindow = (state: OSState, appId: string, title?: string): Window => {
   const app = getAppById(appId);
   if (!app) throw new Error(`Unknown app: ${appId}`);
   const id = generateId();
   const vw = window.innerWidth;
   const vh = window.innerHeight;
+  const shouldMaximize = state.uiPreferences.tabletMode || isTabletViewport();
   const offset = (state.windows.filter((w) => w.appId === appId && w.state !== 'minimized').length) * 30;
   const width = Math.min(app.defaultSize.width, vw - 40);
   const height = Math.min(app.defaultSize.height, vh - TOP_PANEL_HEIGHT - 80); // padding for dock
@@ -26,9 +47,9 @@ const createWindow = (state: OSState, appId: string, title?: string): Window => 
     id,
     appId,
     title: title || app.name,
-    position: { x, y },
-    size: { width, height },
-    state: 'normal',
+    position: shouldMaximize ? { x: 0, y: TOP_PANEL_HEIGHT } : { x, y },
+    size: shouldMaximize ? { width: vw, height: vh - TOP_PANEL_HEIGHT - 64 } : { width, height },
+    state: shouldMaximize ? 'maximized' : 'normal',
     isFocused: true,
     zIndex: state.nextZIndex,
     icon: app.icon,
@@ -100,6 +121,11 @@ const initialState: OSState = {
     accent: '#7C4DFF',
     wallpaper: '',
   },
+  uiPreferences: defaultUIPreferences,
+  integrationStatus: {
+    supabaseConfigured,
+    aiConfigured: supabaseConfigured,
+  },
   notifications: [],
   dockItems: createInitialDockItems(),
   contextMenu: {
@@ -157,6 +183,53 @@ function osReducer(state: OSState, action: OSAction): OSState {
       };
     }
 
+    case 'RESTORE_OR_FOCUS_APP_WINDOW': {
+      const existing = [...state.windows]
+        .reverse()
+        .find((w) => w.appId === action.appId);
+
+      if (!existing) {
+        const win = createWindow(state, action.appId);
+        const newWindows = state.windows.map((w) => ({ ...w, isFocused: false }));
+        const updatedDock = state.dockItems.map((d) =>
+          d.appId === action.appId ? { ...d, isOpen: true, isFocused: true, bounce: true } : { ...d, isFocused: false }
+        );
+        return {
+          ...state,
+          windows: [...newWindows, win],
+          activeWindowId: win.id,
+          nextZIndex: state.nextZIndex + 1,
+          dockItems: updatedDock,
+        };
+      }
+
+      const nextZ = state.nextZIndex + 1;
+      const restoredPosition = existing.prevPosition || existing.position;
+      const restoredSize = existing.prevSize || existing.size;
+      return {
+        ...state,
+        windows: state.windows.map((w) =>
+          w.id === existing.id
+            ? {
+                ...w,
+                state: w.state === 'minimized' ? 'normal' as WindowState : w.state,
+                position: w.state === 'minimized' ? restoredPosition : w.position,
+                size: w.state === 'minimized' ? restoredSize : w.size,
+                prevPosition: undefined,
+                prevSize: undefined,
+                isFocused: true,
+                zIndex: nextZ,
+              }
+            : { ...w, isFocused: false }
+        ),
+        activeWindowId: existing.id,
+        nextZIndex: nextZ,
+        dockItems: state.dockItems.map((d) =>
+          d.appId === action.appId ? { ...d, isOpen: true, isFocused: true } : { ...d, isFocused: false }
+        ),
+      };
+    }
+
     case 'CLOSE_WINDOW': {
       const appId = state.windows.find((w) => w.id === action.windowId)?.appId;
       const remaining = state.windows.filter((w) => w.id !== action.windowId);
@@ -165,7 +238,7 @@ function osReducer(state: OSState, action: OSAction): OSState {
       let updatedDock = state.dockItems;
       if (appId) {
         updatedDock = state.dockItems.map((d) =>
-          d.appId === appId ? { ...d, isOpen: hasOtherWindows || d.isPinned, isFocused: hasVisible } : d
+          d.appId === appId ? { ...d, isOpen: hasOtherWindows, isFocused: hasVisible } : d
         );
       }
       const newActiveId = remaining.length > 0
@@ -334,9 +407,24 @@ function osReducer(state: OSState, action: OSAction): OSState {
       return { ...state, desktopIcons: next };
     }
 
+    case 'REMOVE_DESKTOP_ICONS': {
+      const removeIds = new Set(action.ids);
+      const next = state.desktopIcons.filter((i) => !removeIds.has(i.id));
+      localStorage.setItem('iplinux_desktop_icons_v5', JSON.stringify(next));
+      return { ...state, desktopIcons: next };
+    }
+
     case 'UPDATE_DESKTOP_ICON_POSITION': {
       const next = state.desktopIcons.map((i) =>
         i.id === action.id ? { ...i, position: action.position } : i
+      );
+      localStorage.setItem('iplinux_desktop_icons_v5', JSON.stringify(next));
+      return { ...state, desktopIcons: next };
+    }
+
+    case 'UPDATE_DESKTOP_ICON_POSITIONS': {
+      const next = state.desktopIcons.map((i) =>
+        action.positions[i.id] ? { ...i, position: action.positions[i.id] } : i
       );
       localStorage.setItem('iplinux_desktop_icons_v5', JSON.stringify(next));
       return { ...state, desktopIcons: next };
@@ -351,8 +439,30 @@ function osReducer(state: OSState, action: OSAction): OSState {
       };
     }
 
+    case 'SELECT_DESKTOP_ICONS': {
+      const selectedIds = new Set(action.ids);
+      return {
+        ...state,
+        desktopIcons: state.desktopIcons.map((i) =>
+          ({ ...i, isSelected: selectedIds.has(i.id) })
+        ),
+      };
+    }
+
     case 'SET_THEME': {
       return { ...state, theme: { ...state.theme, ...action.theme } };
+    }
+
+    case 'SET_UI_PREFERENCES': {
+      return { ...state, uiPreferences: { ...state.uiPreferences, ...action.preferences } };
+    }
+
+    case 'SET_TABLET_MODE': {
+      return { ...state, uiPreferences: { ...state.uiPreferences, tabletMode: action.tabletMode } };
+    }
+
+    case 'SET_INTEGRATION_STATUS': {
+      return { ...state, integrationStatus: { ...state.integrationStatus, ...action.status } };
     }
 
     case 'TOGGLE_THEME': {
@@ -383,6 +493,15 @@ function osReducer(state: OSState, action: OSAction): OSState {
         ...state,
         dockItems: state.dockItems.map((d) =>
           d.appId === action.appId ? { ...d, bounce: true } : { ...d, bounce: false }
+        ),
+      };
+    }
+
+    case 'CLEAR_DOCK_BOUNCE': {
+      return {
+        ...state,
+        dockItems: state.dockItems.map((d) =>
+          action.appId && d.appId !== action.appId ? d : { ...d, bounce: false }
         ),
       };
     }

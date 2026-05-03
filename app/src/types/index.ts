@@ -47,6 +47,9 @@ export interface AppDefinition {
   defaultSize: Size;
   minSize: Size;
   component?: string;
+  iconStyle?: 'solid' | 'duotone' | 'brand';
+  accent?: string;
+  featuredOnDesktop?: boolean;
 }
 
 // --------------------------------------------------------
@@ -101,6 +104,19 @@ export interface Theme {
   mode: ThemeMode;
   accent: string;
   wallpaper: string;
+}
+
+export interface UIPreferences {
+  reduceMotion: boolean;
+  blurIntensity: number;
+  wallpaperQuality: 'low' | 'medium' | 'high' | 'ultra';
+  iconScale: number;
+  tabletMode: boolean;
+}
+
+export interface IntegrationStatus {
+  supabaseConfigured: boolean;
+  aiConfigured: boolean;
 }
 
 // --------------------------------------------------------
@@ -187,6 +203,8 @@ export interface OSState {
   apps: AppDefinition[];
   desktopIcons: DesktopIcon[];
   theme: Theme;
+  uiPreferences: UIPreferences;
+  integrationStatus: IntegrationStatus;
   notifications: Notification[];
   dockItems: DockItem[];
   contextMenu: ContextMenuState;
@@ -207,6 +225,7 @@ export type OSAction =
   | { type: 'LOGIN'; isGuest: boolean }
   | { type: 'LOGOUT' }
   | { type: 'OPEN_WINDOW'; appId: string; title?: string }
+  | { type: 'RESTORE_OR_FOCUS_APP_WINDOW'; appId: string }
   | { type: 'CLOSE_WINDOW'; windowId: string }
   | { type: 'MINIMIZE_WINDOW'; windowId: string }
   | { type: 'MAXIMIZE_WINDOW'; windowId: string }
@@ -224,13 +243,20 @@ export type OSAction =
   | { type: 'MARK_NOTIFICATION_READ'; id: string }
   | { type: 'ADD_DESKTOP_ICON'; icon: Omit<DesktopIcon, 'id'> }
   | { type: 'REMOVE_DESKTOP_ICON'; id: string }
+  | { type: 'REMOVE_DESKTOP_ICONS'; ids: string[] }
   | { type: 'UPDATE_DESKTOP_ICON_POSITION'; id: string; position: Position }
+  | { type: 'UPDATE_DESKTOP_ICON_POSITIONS'; positions: Record<string, Position> }
   | { type: 'SELECT_DESKTOP_ICON'; id: string | null }
+  | { type: 'SELECT_DESKTOP_ICONS'; ids: string[] }
   | { type: 'SET_THEME'; theme: Partial<Theme> }
+  | { type: 'SET_UI_PREFERENCES'; preferences: Partial<UIPreferences> }
+  | { type: 'SET_TABLET_MODE'; tabletMode: boolean }
+  | { type: 'SET_INTEGRATION_STATUS'; status: Partial<IntegrationStatus> }
   | { type: 'TOGGLE_THEME' }
   | { type: 'PIN_DOCK_ITEM'; appId: string }
   | { type: 'UNPIN_DOCK_ITEM'; appId: string }
   | { type: 'BOUNCE_DOCK_ITEM'; appId: string }
+  | { type: 'CLEAR_DOCK_BOUNCE'; appId?: string }
   | { type: 'SHOW_CONTEXT_MENU'; x: number; y: number; menuType: ContextMenuType; items: ContextMenuItem[]; contextData?: Record<string, unknown> }
   | { type: 'HIDE_CONTEXT_MENU' }
   | { type: 'START_ALT_TAB' }
