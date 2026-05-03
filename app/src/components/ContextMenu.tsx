@@ -4,13 +4,8 @@
 
 import { useEffect, useRef, memo } from 'react';
 import { useOS } from '@/hooks/useOSStore';
-import * as Icons from 'lucide-react';
-import type { LucideProps } from 'lucide-react';
-
-const DynamicIcon = ({ name, ...props }: { name: string } & LucideProps) => {
-  const IconComp = (Icons as unknown as Record<string, React.ComponentType<LucideProps>>)[name];
-  return IconComp ? <IconComp {...props} /> : null;
-};
+import SystemIcon from './SystemIcon';
+import type { OSAction, OSState } from '@/types';
 
 const ContextMenu = memo(function ContextMenu() {
   const { state, dispatch } = useOS();
@@ -96,7 +91,7 @@ const ContextMenu = memo(function ContextMenu() {
             }}
           >
             {item.icon && (
-              <DynamicIcon name={item.icon} size={16} className="shrink-0" />
+              <SystemIcon name={item.icon} size={18} className="shrink-0 text-[var(--text-secondary)]" />
             )}
             <span className="flex-1 text-left truncate">{item.label}</span>
             {item.shortcut && (
@@ -116,11 +111,34 @@ const ContextMenu = memo(function ContextMenu() {
   );
 });
 
-function handleMenuAction(action: string, _state: unknown, dispatch: React.Dispatch<import('@/types').OSAction>) {
+function handleMenuAction(action: string, state: OSState, dispatch: React.Dispatch<OSAction>) {
   const [cmd, ...args] = action.split(':');
   switch (cmd) {
     case 'OPEN_APP': {
       if (args[0]) dispatch({ type: 'OPEN_WINDOW', appId: args[0] });
+      break;
+    }
+    case 'OPEN_DESKTOP_SELECTION': {
+      state.desktopIcons
+        .filter((icon) => icon.isSelected && icon.appId)
+        .forEach((icon) => {
+          if (icon.appId) dispatch({ type: 'OPEN_WINDOW', appId: icon.appId });
+        });
+      break;
+    }
+    case 'SELECT_ALL_DESKTOP': {
+      dispatch({ type: 'SELECT_DESKTOP_ICONS', ids: state.desktopIcons.map((icon) => icon.id) });
+      break;
+    }
+    case 'CLEAR_DESKTOP_SELECTION': {
+      dispatch({ type: 'SELECT_DESKTOP_ICON', id: null });
+      break;
+    }
+    case 'DELETE_DESKTOP_SELECTION': {
+      dispatch({
+        type: 'REMOVE_DESKTOP_ICONS',
+        ids: state.desktopIcons.filter((icon) => icon.isSelected).map((icon) => icon.id),
+      });
       break;
     }
     case 'NEW_FOLDER':

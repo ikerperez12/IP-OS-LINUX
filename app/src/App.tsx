@@ -15,13 +15,7 @@ import ContextMenu from '@/components/ContextMenu';
 import NotificationSystem from '@/components/NotificationSystem';
 import NotificationCenter from '@/components/NotificationCenter';
 import AppIcon from '@/components/AppIcon';
-import * as Icons from 'lucide-react';
-import type { LucideProps } from 'lucide-react';
-
-const DynamicIcon = ({ name, ...props }: { name: string } & LucideProps) => {
-  const IconComp = (Icons as unknown as Record<string, React.ComponentType<LucideProps>>)[name];
-  return IconComp ? <IconComp {...props} /> : <Icons.HelpCircle {...props} />;
-};
+import OpenTasksBar from '@/components/OpenTasksBar';
 
 function AppShell() {
   const { state, dispatch } = useOS();
@@ -35,6 +29,16 @@ function AppShell() {
       dispatch({ type: 'SET_BOOT_PHASE', phase: 'logo' });
     }
   }, [bootPhase, dispatch]);
+
+  useEffect(() => {
+    const syncViewportMode = () => {
+      const tabletMode = window.innerWidth <= 900 || window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+      dispatch({ type: 'SET_TABLET_MODE', tabletMode });
+    };
+    syncViewportMode();
+    window.addEventListener('resize', syncViewportMode);
+    return () => window.removeEventListener('resize', syncViewportMode);
+  }, [dispatch]);
 
   const handleBootComplete = useCallback(() => {
     setBootComplete(true);
@@ -146,6 +150,7 @@ function AppShell() {
           <TopPanel />
 
           {/* Dock */}
+          <OpenTasksBar />
           <Dock />
 
           {/* Overlays */}
@@ -187,7 +192,7 @@ function AppShell() {
                           transform: isSelected ? 'scale(1.05)' : 'scale(1)',
                         }}
                       >
-                        <AppIcon appId={w.appId} size={48} className="drop-shadow-lg" />
+                        <AppIcon appId={w.appId} size={56} className="drop-shadow-lg" />
                         <span
                           className="text-[11px] font-medium tracking-wide truncate w-full text-center mt-2"
                           style={{ color: isSelected ? '#fff' : 'var(--text-secondary)' }}

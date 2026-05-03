@@ -1,173 +1,269 @@
 // ============================================================
-// Desktop — Animated wallpaper + draggable icons + context menu
+// Desktop - reactive wallpaper, icon grid, drag, and selection box
 // ============================================================
 
-import { useCallback, memo, useState, useRef, useEffect } from 'react';
+import { useCallback, memo, useMemo, useRef, useState } from 'react';
+import type { DesktopIcon, Position } from '@/types';
 import { useOS } from '@/hooks/useOSStore';
 import AppIcon from './AppIcon';
+import ReactiveWallpaper from './ReactiveWallpaper';
 
 const GRID_X = 120;
 const GRID_Y = 130;
 
-// Animated wallpaper using canvas
-const AnimatedWallpaper = memo(function AnimatedWallpaper() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let animId: number;
-    let t = 0;
-
-    const resize = () => {
-      canvas.width = window.innerWidth * window.devicePixelRatio;
-      canvas.height = window.innerHeight * window.devicePixelRatio;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    // Orbs for ambient motion
-    const orbs = Array.from({ length: 6 }, () => ({
-      x: Math.random(),
-      y: Math.random(),
-      r: 0.15 + Math.random() * 0.25,
-      vx: (Math.random() - 0.5) * 0.0003,
-      vy: (Math.random() - 0.5) * 0.0003,
-      hue: Math.floor(Math.random() * 60) + 240, // purple-blue range
-    }));
-
-    const draw = () => {
-      const w = canvas.width;
-      const h = canvas.height;
-      t += 0.003;
-
-      // Dark base
-      ctx.fillStyle = '#08001a';
-      ctx.fillRect(0, 0, w, h);
-
-      // Draw ambient orbs
-      orbs.forEach((orb) => {
-        orb.x += orb.vx + Math.sin(t * 0.5) * 0.0001;
-        orb.y += orb.vy + Math.cos(t * 0.7) * 0.0001;
-        if (orb.x < -0.2) orb.x = 1.2;
-        if (orb.x > 1.2) orb.x = -0.2;
-        if (orb.y < -0.2) orb.y = 1.2;
-        if (orb.y > 1.2) orb.y = -0.2;
-
-        const grd = ctx.createRadialGradient(
-          orb.x * w, orb.y * h, 0,
-          orb.x * w, orb.y * h, orb.r * Math.min(w, h)
-        );
-        grd.addColorStop(0, `hsla(${orb.hue + Math.sin(t) * 20}, 70%, 50%, 0.12)`);
-        grd.addColorStop(0.5, `hsla(${orb.hue + 30}, 60%, 40%, 0.05)`);
-        grd.addColorStop(1, 'transparent');
-        ctx.fillStyle = grd;
-        ctx.fillRect(0, 0, w, h);
-      });
-
-      // Subtle star field
-      ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      for (let i = 0; i < 80; i++) {
-        const sx = ((i * 7919 + Math.sin(t * 0.1 + i) * 2) % w + w) % w;
-        const sy = ((i * 6271 + Math.cos(t * 0.08 + i) * 2) % h + h) % h;
-        const sr = 0.3 + Math.sin(t + i) * 0.2;
-        ctx.beginPath();
-        ctx.arc(sx, sy, sr * window.devicePixelRatio, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Soft vignette
-      const vgrd = ctx.createRadialGradient(w / 2, h / 2, w * 0.2, w / 2, h / 2, w * 0.7);
-      vgrd.addColorStop(0, 'transparent');
-      vgrd.addColorStop(1, 'rgba(0,0,0,0.4)');
-      ctx.fillStyle = vgrd;
-      ctx.fillRect(0, 0, w, h);
-
-      animId = requestAnimationFrame(draw);
+type DesktopInteraction =
+  | {
+      mode: 'select';
+      start: Position;
+      current: Position;
+      additive: boolean;
+      baseSelectedIds: string[];
+    }
+  | {
+      mode: 'drag';
+      ids: string[];
+      startMouse: Position;
+      originalPositions: Record<string, Position>;
     };
 
-    draw();
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener('resize', resize);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} className="absolute inset-0 z-0" />;
+const rectFromPoints = (a: Position, b: Position) => ({
+  x: Math.min(a.x, b.x),
+  y: Math.min(a.y, b.y),
+  width: Math.abs(a.x - b.x),
+  height: Math.abs(a.y - b.y),
 });
+
+const rectsIntersect = (
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number }
+) => (
+  a.x < b.x + b.width &&
+  a.x + a.width > b.x &&
+  a.y < b.y + b.height &&
+  a.y + a.height > b.y
+);
+
+const sameIds = (a: string[], b: string[]) => (
+  a.length === b.length && a.every((id, idx) => id === b[idx])
+);
 
 const Desktop = memo(function Desktop() {
   const { state, dispatch } = useOS();
   const { desktopIcons } = state;
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const desktopRef = useRef<HTMLDivElement>(null);
+  const selectionDraftRef = useRef<string>('');
+  const dragMovedRef = useRef(false);
+  const [interaction, setInteraction] = useState<DesktopInteraction | null>(null);
 
-  const handleIconDoubleClick = useCallback(
-    (icon: typeof desktopIcons[0]) => {
-      if (icon.appId) {
-        dispatch({ type: 'OPEN_WINDOW', appId: icon.appId });
-      }
+  const selectedIds = useMemo(
+    () => desktopIcons.filter((icon) => icon.isSelected).map((icon) => icon.id),
+    [desktopIcons]
+  );
+
+  const metrics = state.uiPreferences.tabletMode
+    ? { width: 98, height: 112, tile: 82, icon: 76, maxX: 112, maxY: 190 }
+    : { width: 88, height: 98, tile: 76, icon: 72, maxX: 100, maxY: 170 };
+
+  const getLocalPoint = useCallback((e: React.MouseEvent): Position => {
+    const rect = desktopRef.current?.getBoundingClientRect();
+    return {
+      x: rect ? e.clientX - rect.left : e.clientX,
+      y: rect ? e.clientY - rect.top : e.clientY,
+    };
+  }, []);
+
+  const clampPosition = useCallback(
+    (position: Position): Position => ({
+      x: Math.max(12, Math.min(position.x, window.innerWidth - metrics.maxX)),
+      y: Math.max(12, Math.min(position.y, window.innerHeight - metrics.maxY)),
+    }),
+    [metrics.maxX, metrics.maxY]
+  );
+
+  const selectIds = useCallback(
+    (ids: string[]) => {
+      const uniqueIds = Array.from(new Set(ids));
+      const key = uniqueIds.join('|');
+      if (selectionDraftRef.current === key) return;
+      selectionDraftRef.current = key;
+      dispatch({ type: 'SELECT_DESKTOP_ICONS', ids: uniqueIds });
     },
     [dispatch]
   );
 
-  const handleIconMouseDown = useCallback(
-    (e: React.MouseEvent, icon: typeof desktopIcons[0]) => {
-      e.stopPropagation();
-      dispatch({ type: 'SELECT_DESKTOP_ICON', id: icon.id });
-      if (icon.appId) {
-        setDraggingId(icon.id);
-        // Track the offset of the mouse relative to the icon's top-left corner
-        setDragOffset({ x: e.clientX - icon.position.x, y: e.clientY - icon.position.y });
-      }
+  const openIcons = useCallback(
+    (icons: DesktopIcon[]) => {
+      icons.forEach((icon) => {
+        if (icon.appId) dispatch({ type: 'OPEN_WINDOW', appId: icon.appId });
+      });
     },
     [dispatch]
+  );
+
+  const handleIconDoubleClick = useCallback(
+    (icon: DesktopIcon) => openIcons([icon]),
+    [openIcons]
+  );
+
+  const handleDesktopMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return;
+      if ((e.target as HTMLElement).closest('[data-desktop-icon="true"]')) return;
+
+      desktopRef.current?.focus();
+      const start = getLocalPoint(e);
+      const additive = e.ctrlKey || e.metaKey || e.shiftKey;
+      selectionDraftRef.current = additive ? selectedIds.join('|') : '';
+      if (!additive) dispatch({ type: 'SELECT_DESKTOP_ICON', id: null });
+      setInteraction({
+        mode: 'select',
+        start,
+        current: start,
+        additive,
+        baseSelectedIds: additive ? selectedIds : [],
+      });
+    },
+    [dispatch, getLocalPoint, selectedIds]
+  );
+
+  const handleIconMouseDown = useCallback(
+    (e: React.MouseEvent, icon: DesktopIcon) => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      desktopRef.current?.focus();
+
+      const additive = e.ctrlKey || e.metaKey || e.shiftKey;
+      let nextSelectedIds: string[];
+
+      if (additive) {
+        if ((e.ctrlKey || e.metaKey) && icon.isSelected) {
+          nextSelectedIds = selectedIds.filter((id) => id !== icon.id);
+        } else {
+          nextSelectedIds = Array.from(new Set([...selectedIds, icon.id]));
+        }
+      } else if (icon.isSelected && selectedIds.length > 1) {
+        nextSelectedIds = selectedIds;
+      } else {
+        nextSelectedIds = [icon.id];
+      }
+
+      selectIds(nextSelectedIds);
+
+      const dragIds = nextSelectedIds.includes(icon.id) ? nextSelectedIds : [icon.id];
+      const originalPositions = Object.fromEntries(
+        desktopIcons
+          .filter((candidate) => dragIds.includes(candidate.id))
+          .map((candidate) => [candidate.id, candidate.position])
+      );
+
+      dragMovedRef.current = false;
+      setInteraction({
+        mode: 'drag',
+        ids: dragIds,
+        startMouse: { x: e.clientX, y: e.clientY },
+        originalPositions,
+      });
+    },
+    [desktopIcons, selectIds, selectedIds]
   );
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
-      if (!draggingId) return;
-      
-      // Calculate new smooth coordinates based on mouse position minus initial offset within the icon
-      const rawX = e.clientX - dragOffset.x;
-      const rawY = e.clientY - dragOffset.y;
+      if (!interaction) return;
 
-      // Make snapping optional: free dragging until mouse up, or snap while dragging.
-      // Free dragging feels more natural:
-      dispatch({
-        type: 'UPDATE_DESKTOP_ICON_POSITION',
-        id: draggingId,
-        position: { x: rawX, y: rawY },
+      if (interaction.mode === 'select') {
+        const current = getLocalPoint(e);
+        const selectionRect = rectFromPoints(interaction.start, current);
+        const hitIds = desktopIcons
+          .filter((icon) => {
+            const pos = clampPosition(icon.position);
+            return rectsIntersect(selectionRect, {
+              x: pos.x,
+              y: pos.y,
+              width: metrics.width,
+              height: metrics.height,
+            });
+          })
+          .map((icon) => icon.id);
+
+        selectIds(interaction.additive ? [...interaction.baseSelectedIds, ...hitIds] : hitIds);
+        setInteraction({ ...interaction, current });
+        return;
+      }
+
+      const dx = e.clientX - interaction.startMouse.x;
+      const dy = e.clientY - interaction.startMouse.y;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMovedRef.current = true;
+
+      const positions: Record<string, Position> = {};
+      interaction.ids.forEach((id) => {
+        const original = interaction.originalPositions[id];
+        if (!original) return;
+        positions[id] = { x: original.x + dx, y: original.y + dy };
       });
+
+      dispatch({ type: 'UPDATE_DESKTOP_ICON_POSITIONS', positions });
     },
-    [draggingId, dragOffset, dispatch]
+    [clampPosition, desktopIcons, dispatch, getLocalPoint, interaction, metrics.height, metrics.width, selectIds]
   );
 
-  const handleMouseUp = useCallback(
-    (e: React.MouseEvent) => {
-      if (draggingId) {
-        // Snap to grid on mouse up
-        const icon = desktopIcons.find((i) => i.id === draggingId);
-        if (icon) {
-           const snapX = Math.max(16, Math.round((icon.position.x - 16) / GRID_X) * GRID_X + 16);
-           const snapY = Math.max(16, Math.round((icon.position.y - 16) / GRID_Y) * GRID_Y + 16);
-           dispatch({
-             type: 'UPDATE_DESKTOP_ICON_POSITION',
-             id: draggingId,
-             position: { x: snapX, y: snapY },
-           });
-        }
+  const handleMouseUp = useCallback(() => {
+    if (!interaction) return;
+
+    if (interaction.mode === 'select') {
+      const rect = rectFromPoints(interaction.start, interaction.current);
+      if (rect.width < 5 && rect.height < 5 && !interaction.additive) {
+        dispatch({ type: 'SELECT_DESKTOP_ICON', id: null });
       }
-      setDraggingId(null);
+      setInteraction(null);
+      return;
+    }
+
+    if (dragMovedRef.current) {
+      const positions: Record<string, Position> = {};
+      desktopIcons
+        .filter((icon) => interaction.ids.includes(icon.id))
+        .forEach((icon) => {
+          positions[icon.id] = {
+            x: Math.max(16, Math.round((icon.position.x - 16) / GRID_X) * GRID_X + 16),
+            y: Math.max(16, Math.round((icon.position.y - 16) / GRID_Y) * GRID_Y + 16),
+          };
+        });
+      dispatch({ type: 'UPDATE_DESKTOP_ICON_POSITIONS', positions });
+    }
+
+    dragMovedRef.current = false;
+    setInteraction(null);
+  }, [desktopIcons, dispatch, interaction]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      const selectedIcons = desktopIcons.filter((icon) => icon.isSelected);
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        selectIds(desktopIcons.map((icon) => icon.id));
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        dispatch({ type: 'SELECT_DESKTOP_ICON', id: null });
+        selectionDraftRef.current = '';
+        return;
+      }
+
+      if (e.key === 'Enter' && selectedIcons.length > 0) {
+        e.preventDefault();
+        openIcons(selectedIcons);
+        return;
+      }
+
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIcons.length > 0) {
+        e.preventDefault();
+        dispatch({ type: 'REMOVE_DESKTOP_ICONS', ids: selectedIcons.map((icon) => icon.id) });
+      }
     },
-    [draggingId, desktopIcons, dispatch]
+    [desktopIcons, dispatch, openIcons, selectIds]
   );
 
   const handleDesktopContextMenu = useCallback(
@@ -179,6 +275,9 @@ const Desktop = memo(function Desktop() {
         y: e.clientY,
         menuType: 'desktop',
         items: [
+          { id: 'select-all', label: 'Select All', icon: 'SquareCheckBig', shortcut: 'Ctrl+A', action: 'SELECT_ALL_DESKTOP' },
+          { id: 'clear-selection', label: 'Clear Selection', icon: 'CircleX', shortcut: 'Esc', action: 'CLEAR_DESKTOP_SELECTION', disabled: selectedIds.length === 0 },
+          { id: 'div0', label: '', action: '', divider: true },
           { id: 'new-folder', label: 'New Folder', icon: 'FolderPlus', action: 'NEW_FOLDER' },
           { id: 'new-doc', label: 'New Document', icon: 'FilePlus', action: 'NEW_DOCUMENT' },
           { id: 'div1', label: '', action: '', divider: true },
@@ -192,88 +291,133 @@ const Desktop = memo(function Desktop() {
         ],
       });
     },
-    [dispatch]
+    [dispatch, selectedIds.length]
   );
+
+  const selectionRect = interaction?.mode === 'select'
+    ? rectFromPoints(interaction.start, interaction.current)
+    : null;
 
   return (
     <div
       ref={desktopRef}
-      className="fixed inset-0 z-10"
+      className="fixed inset-0 z-10 outline-none"
       style={{ top: 28, bottom: 56 }}
+      tabIndex={0}
+      onMouseDown={handleDesktopMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onKeyDown={handleKeyDown}
       onContextMenu={handleDesktopContextMenu}
-      onClick={() => dispatch({ type: 'SELECT_DESKTOP_ICON', id: null })}
     >
-      {/* Animated wallpaper */}
-      <AnimatedWallpaper />
+      <ReactiveWallpaper />
 
-      {/* Desktop Icons */}
-      {desktopIcons.map((icon, idx) => (
-        <div
-          key={icon.id}
-          className="absolute flex flex-col items-center gap-1 cursor-pointer group"
-          style={{
-            left: icon.position.x,
-            top: icon.position.y,
-            width: 78,
-            opacity: draggingId === icon.id ? 0.5 : 1,
-            animation: `iconAppear 300ms cubic-bezier(0.34, 1.56, 0.64, 1) ${idx * 30}ms both`,
-            zIndex: icon.isSelected ? 50 : 1,
-          }}
-          onDoubleClick={() => handleIconDoubleClick(icon)}
-          onMouseDown={(e) => handleIconMouseDown(e, icon)}
-          onContextMenu={(e) => {
-            e.stopPropagation();
-            dispatch({
-              type: 'SHOW_CONTEXT_MENU',
-              x: e.clientX,
-              y: e.clientY,
-              menuType: 'file',
-              items: [
-                { id: 'open', label: 'Open', icon: 'ExternalLink', action: `OPEN_APP:${icon.appId}` },
-                { id: 'div1', label: '', action: '', divider: true },
-                { id: 'cut', label: 'Cut', icon: 'Scissors', action: 'CUT' },
-                { id: 'copy', label: 'Copy', icon: 'Copy', action: 'COPY' },
-                { id: 'rename', label: 'Rename', icon: 'Edit', action: 'RENAME' },
-                { id: 'div2', label: '', action: '', divider: true },
-                { id: 'trash', label: 'Move to Trash', icon: 'Trash2', action: 'TRASH' },
-              ],
-              contextData: { iconId: icon.id },
-            });
-          }}
-        >
-          {/* Colorful app icon */}
+      {desktopIcons.map((icon, idx) => {
+        const pos = clampPosition(icon.position);
+        return (
           <div
-            className="transition-transform duration-200 group-hover:scale-110 group-hover:-translate-y-1 w-16 h-16 flex items-center justify-center"
+            key={icon.id}
+            data-desktop-icon="true"
+            className="absolute flex flex-col items-center gap-1 cursor-pointer group"
             style={{
-              borderRadius: 14,
-              padding: 2,
-              background: icon.isSelected ? 'rgba(124,77,255,0.4)' : 'transparent',
-              boxShadow: icon.isSelected ? '0 0 16px rgba(124,77,255,0.3)' : 'none',
+              left: pos.x,
+              top: pos.y,
+              width: metrics.width,
+              opacity: interaction?.mode === 'drag' && interaction.ids.includes(icon.id) ? 0.72 : 1,
+              animation: `iconAppear 300ms cubic-bezier(0.34, 1.56, 0.64, 1) ${idx * 30}ms both`,
+              zIndex: icon.isSelected ? 50 : 1,
             }}
-          >
-            <AppIcon appId={icon.appId || ''} size={64} />
-          </div>
+            onClick={(e) => e.stopPropagation()}
+            onDoubleClick={() => handleIconDoubleClick(icon)}
+            onMouseDown={(e) => handleIconMouseDown(e, icon)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
 
-          {/* Label */}
-          <span
-            className="text-[11px] font-semibold text-center px-1.5 py-0.5 rounded-md max-w-[80px] leading-tight"
-            style={{
-              color: '#FFFFFF',
-              textShadow: '0 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)',
-              background: icon.isSelected ? 'rgba(124,77,255,0.5)' : 'transparent',
-              WebkitLineClamp: 2,
-              display: '-webkit-box',
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-              wordBreak: 'break-word',
+              const groupSelected = icon.isSelected ? selectedIds : [icon.id];
+              if (!icon.isSelected) selectIds([icon.id]);
+
+              dispatch({
+                type: 'SHOW_CONTEXT_MENU',
+                x: e.clientX,
+                y: e.clientY,
+                menuType: 'file',
+                items: [
+                  {
+                    id: 'open',
+                    label: groupSelected.length > 1 ? `Open ${groupSelected.length} Items` : 'Open',
+                    icon: 'ExternalLink',
+                    shortcut: 'Enter',
+                    action: groupSelected.length > 1 ? 'OPEN_DESKTOP_SELECTION' : `OPEN_APP:${icon.appId}`,
+                  },
+                  { id: 'select-all', label: 'Select All', icon: 'SquareCheckBig', shortcut: 'Ctrl+A', action: 'SELECT_ALL_DESKTOP' },
+                  { id: 'div1', label: '', action: '', divider: true },
+                  { id: 'cut', label: 'Cut', icon: 'Scissors', action: 'CUT' },
+                  { id: 'copy', label: 'Copy', icon: 'Copy', action: 'COPY' },
+                  { id: 'rename', label: 'Rename', icon: 'Edit', action: 'RENAME', disabled: groupSelected.length > 1 },
+                  { id: 'div2', label: '', action: '', divider: true },
+                  {
+                    id: 'remove',
+                    label: groupSelected.length > 1 ? 'Remove Shortcuts' : 'Remove Shortcut',
+                    icon: 'Trash2',
+                    shortcut: 'Del',
+                    action: 'DELETE_DESKTOP_SELECTION',
+                  },
+                ],
+                contextData: { iconId: icon.id, selectedIds: groupSelected },
+              });
             }}
           >
-            {icon.name}
-          </span>
-        </div>
-      ))}
+            <div
+              className="transition-transform duration-200 group-hover:scale-110 group-hover:-translate-y-1 flex items-center justify-center"
+              style={{
+                width: metrics.tile,
+                height: metrics.tile,
+                borderRadius: 18,
+                padding: 2,
+                background: icon.isSelected ? 'rgba(124,77,255,0.4)' : 'transparent',
+                boxShadow: icon.isSelected ? '0 0 18px rgba(124,77,255,0.42), inset 0 0 0 1px rgba(255,255,255,0.18)' : 'none',
+              }}
+            >
+              <AppIcon appId={icon.appId || ''} size={metrics.icon} />
+            </div>
+
+            <span
+              className="text-[11px] font-semibold text-center px-1.5 py-0.5 rounded-md leading-tight"
+              style={{
+                maxWidth: metrics.width,
+                color: '#FFFFFF',
+                textShadow: '0 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)',
+                background: icon.isSelected ? 'rgba(124,77,255,0.5)' : 'transparent',
+                WebkitLineClamp: 2,
+                display: '-webkit-box',
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                wordBreak: 'break-word',
+              }}
+            >
+              {icon.name}
+            </span>
+          </div>
+        );
+      })}
+
+      {selectionRect && (selectionRect.width > 3 || selectionRect.height > 3) && (
+        <div
+          className="absolute pointer-events-none z-[70] rounded-md"
+          style={{
+            left: selectionRect.x,
+            top: selectionRect.y,
+            width: selectionRect.width,
+            height: selectionRect.height,
+            background: 'rgba(124,77,255,0.18)',
+            border: '1px solid rgba(196,181,253,0.82)',
+            boxShadow: '0 0 24px rgba(124,77,255,0.22), inset 0 0 18px rgba(255,255,255,0.08)',
+            backdropFilter: 'blur(2px)',
+          }}
+        />
+      )}
 
       <style>{`
         @keyframes iconAppear {

@@ -6,6 +6,7 @@ import { useCallback, memo, useState, useEffect } from 'react';
 import { useOS } from '@/hooks/useOSStore';
 import { getAppById } from '@/apps/registry';
 import AppIcon from './AppIcon';
+import SystemIcon from './SystemIcon';
 
 const Dock = memo(function Dock() {
   const { state, dispatch } = useOS();
@@ -18,7 +19,7 @@ const Dock = memo(function Dock() {
     const bouncing = dockItems.filter((d) => d.bounce).map((d) => d.appId);
     if (bouncing.length > 0) {
       setBouncingItems((prev) => new Set([...prev, ...bouncing]));
-      dispatch({ type: 'BOUNCE_DOCK_ITEM', appId: bouncing[0] });
+      dispatch({ type: 'CLEAR_DOCK_BOUNCE', appId: bouncing[0] });
       const timer = setTimeout(() => setBouncingItems(new Set()), 400);
       return () => clearTimeout(timer);
     }
@@ -26,20 +27,9 @@ const Dock = memo(function Dock() {
 
   const handleAppClick = useCallback(
     (appId: string) => {
-      const activeWin = state.windows.find((w) => w.appId === appId && w.state !== 'minimized');
-      if (activeWin) {
-        dispatch({ type: 'FOCUS_WINDOW', windowId: activeWin.id });
-      } else {
-        const minWin = state.windows.find((w) => w.appId === appId && w.state === 'minimized');
-        if (minWin) {
-          dispatch({ type: 'RESTORE_WINDOW', windowId: minWin.id });
-          dispatch({ type: 'FOCUS_WINDOW', windowId: minWin.id });
-        } else {
-          dispatch({ type: 'OPEN_WINDOW', appId });
-        }
-      }
+      dispatch({ type: 'RESTORE_OR_FOCUS_APP_WINDOW', appId });
     },
-    [dispatch, state.windows]
+    [dispatch]
   );
 
   const handleShowApps = useCallback(() => {
@@ -53,6 +43,8 @@ const Dock = memo(function Dock() {
   const pinnedItems = dockItems.filter((d) => d.isPinned);
   const openUnpinned = dockItems.filter((d) => !d.isPinned && d.isOpen);
   const allItems = [...pinnedItems, ...openUnpinned];
+  const iconSize = state.uiPreferences.tabletMode ? 58 : 52;
+  const launcherSize = state.uiPreferences.tabletMode ? 58 : 52;
 
   // Magnification scale calculation
   const getScale = (index: number) => {
@@ -81,13 +73,13 @@ const Dock = memo(function Dock() {
     const isBouncing = bouncingItems.has(appId);
     const isOpen = item?.isOpen || false;
     const isFocused = item?.isFocused || false;
-    const scale = isTrash ? 1 : getScale(globalIndex);
-    const ty = isTrash ? 0 : getTranslateY(globalIndex);
+  const scale = isTrash ? 1 : getScale(globalIndex);
+  const ty = isTrash ? 0 : getTranslateY(globalIndex);
 
     return (
       <div
         key={appId}
-        className="relative flex flex-col items-center"
+        className="relative z-10 flex flex-col items-center"
         onMouseEnter={() => !isTrash && setHoveredIndex(globalIndex)}
         onMouseLeave={() => setHoveredIndex(null)}
         style={{
@@ -101,7 +93,7 @@ const Dock = memo(function Dock() {
         {/* Tooltip */}
         {hoveredIndex === globalIndex && (
           <div
-            className="absolute bottom-full mb-3 px-2.5 py-1 rounded-md text-[10px] font-medium whitespace-nowrap z-[4000]"
+            className="absolute bottom-full mb-4 px-2.5 py-1 rounded-md text-[10px] font-medium whitespace-nowrap z-[4000]"
             style={{
               background: 'rgba(20,20,25,0.9)',
               backdropFilter: 'blur(8px)',
@@ -127,9 +119,9 @@ const Dock = memo(function Dock() {
           }}
         >
           {isTrash ? (
-            <AppIcon appId="filemanager" size={44} />
+            <AppIcon appId="filemanager" size={iconSize} />
           ) : (
-            <AppIcon appId={appId} size={44} />
+            <AppIcon appId={appId} size={iconSize} />
           )}
         </button>
 
@@ -157,11 +149,11 @@ const Dock = memo(function Dock() {
 
   return (
     <div
-      className="fixed bottom-2 left-1/2 -translate-x-1/2 z-[150] flex items-end gap-1 px-3 pb-2 pt-1.5"
+      className="fixed bottom-2 left-1/2 -translate-x-1/2 z-[150] flex items-end gap-1 px-3 pb-2 pt-2 max-w-[calc(100vw-12px)] overflow-visible"
       style={{
         background: 'rgba(20, 20, 25, 0.55)',
-        backdropFilter: 'blur(28px) saturate(220%)',
-        WebkitBackdropFilter: 'blur(28px) saturate(220%)',
+        backdropFilter: `blur(${state.uiPreferences.blurIntensity}px) saturate(220%)`,
+        WebkitBackdropFilter: `blur(${state.uiPreferences.blurIntensity}px) saturate(220%)`,
         borderRadius: 20,
         border: '1px solid rgba(255,255,255,0.08)',
         boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
@@ -184,19 +176,14 @@ const Dock = memo(function Dock() {
           <div
             className="flex items-center justify-center"
             style={{
-              width: 44, height: 44,
-              borderRadius: 12,
+              width: launcherSize, height: launcherSize,
+              borderRadius: 15,
               background: state.appLauncherOpen
                 ? 'linear-gradient(145deg, #7C4DFF, #311B92)'
                 : 'rgba(255,255,255,0.08)',
             }}
           >
-            <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-              <rect x="3" y="3" width="7" height="7" rx="2" fill="rgba(255,255,255,0.8)"/>
-              <rect x="14" y="3" width="7" height="7" rx="2" fill="rgba(255,255,255,0.8)"/>
-              <rect x="3" y="14" width="7" height="7" rx="2" fill="rgba(255,255,255,0.8)"/>
-              <rect x="14" y="14" width="7" height="7" rx="2" fill="rgba(255,255,255,0.8)"/>
-            </svg>
+            <SystemIcon name="LayoutGrid" size={Math.round(launcherSize * 0.48)} style={{ color: 'rgba(255,255,255,0.9)' }} />
           </div>
         </button>
       </div>
