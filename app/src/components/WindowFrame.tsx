@@ -5,18 +5,13 @@
 import { useCallback, useRef, useState, memo, useEffect } from 'react';
 import type { Window } from '@/types';
 import { useOS } from '@/hooks/useOSStore';
-import * as Icons from 'lucide-react';
-import type { LucideProps } from 'lucide-react';
+import { Columns2, Maximize2, Minus, X } from 'lucide-react';
+import SystemIcon from './SystemIcon';
 
 const TOP_PANEL_HEIGHT = 28;
 const RESIZE_HANDLE = 8;
 const MIN_W = 320;
 const MIN_H = 200;
-
-const DynamicIcon = ({ name, ...props }: { name: string } & LucideProps) => {
-  const IconComp = (Icons as unknown as unknown as Record<string, React.ComponentType<LucideProps>>)[name];
-  return IconComp ? <IconComp {...props} /> : <Icons.HelpCircle {...props} />;
-};
 
 interface WindowFrameProps {
   window: Window;
@@ -242,14 +237,14 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
             className={`traffic-btn ${isFocused ? 'traffic-close' : 'traffic-unfocused'}`}
             title="Close"
           >
-            <Icons.X size={8} strokeWidth={2.5} color="#4D0000" />
+            <X size={8} strokeWidth={2.5} color="#4D0000" />
           </button>
           <button
             onClick={handleMinimize}
             className={`traffic-btn ${isFocused ? 'traffic-minimize' : 'traffic-unfocused'}`}
             title="Minimize"
           >
-            <Icons.Minus size={8} strokeWidth={2.5} color="#995700" />
+            <Minus size={8} strokeWidth={2.5} color="#995700" />
           </button>
           <button
             onClick={handleMaximize}
@@ -257,16 +252,16 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
             title={isMaximized ? 'Restore' : 'Maximize'}
           >
             {isMaximized ? (
-              <Icons.Columns2 size={7} strokeWidth={2.5} color="#006500" />
+              <Columns2 size={7} strokeWidth={2.5} color="#006500" />
             ) : (
-              <Icons.Maximize2 size={7} strokeWidth={2.5} color="#006500" />
+              <Maximize2 size={7} strokeWidth={2.5} color="#006500" />
             )}
           </button>
         </div>
 
         {/* Center: icon + title */}
         <div className="flex-1 flex items-center justify-center gap-2 overflow-hidden px-2">
-          <DynamicIcon name={win.icon} size={14} className="shrink-0" style={{ color: isFocused ? 'var(--text-secondary)' : 'var(--text-disabled)' }} />
+          <SystemIcon appId={win.appId} name={win.icon} size={16} className="shrink-0" style={{ color: isFocused ? 'var(--text-secondary)' : 'var(--text-disabled)' }} />
           <span
             className="text-[12px] font-medium truncate"
             style={{

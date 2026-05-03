@@ -68,8 +68,8 @@ const AppLauncher = memo(function AppLauncher() {
       className="fixed inset-0 z-[3000] flex flex-col items-center"
       style={{
         background: 'var(--bg-app-grid)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
+        backdropFilter: `blur(${state.uiPreferences.blurIntensity}px)`,
+        WebkitBackdropFilter: `blur(${state.uiPreferences.blurIntensity}px)`,
         animation: 'launcherFade 300ms ease',
         paddingTop: 32,
       }}
@@ -127,7 +127,7 @@ const AppLauncher = memo(function AppLauncher() {
                 className="flex flex-col items-center gap-1.5 group"
               >
                 <div className="group-hover:scale-110 transition-transform">
-                  <AppIcon appId={app!.id} size={52} />
+                  <AppIcon appId={app!.id} size={60} />
                 </div>
                 <span className="text-[10px] text-[var(--text-primary)] text-center truncate max-w-[64px]">{app!.name}</span>
               </button>
@@ -164,8 +164,8 @@ const AppLauncher = memo(function AppLauncher() {
         style={{
           maxHeight: 'calc(100vh - 220px)',
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(88px, 1fr))',
-          gap: 12,
+          gridTemplateColumns: `repeat(auto-fill, minmax(${state.uiPreferences.tabletMode ? 112 : 98}px, 1fr))`,
+          gap: state.uiPreferences.tabletMode ? 16 : 12,
           animation: 'gridAppear 300ms cubic-bezier(0.34, 1.56, 0.64, 1) 200ms both',
         }}
       >
@@ -185,9 +185,9 @@ const AppLauncher = memo(function AppLauncher() {
             }}
           >
             <div className="group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-200">
-              <AppIcon appId={app.id} size={56} />
+              <AppIcon appId={app.id} size={state.uiPreferences.tabletMode ? 70 : 64} />
             </div>
-            <span className="text-[10px] text-[var(--text-primary)] text-center truncate max-w-[80px] font-medium leading-tight">
+            <span className="text-[10px] text-[var(--text-primary)] text-center truncate max-w-[92px] font-medium leading-tight">
               {app.name}
             </span>
           </button>
