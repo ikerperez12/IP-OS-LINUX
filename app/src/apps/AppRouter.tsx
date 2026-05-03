@@ -1,188 +1,98 @@
 // ============================================================
-// App Router — Maps appId to component
+// App Router - lazy-loads app modules on first launch
 // ============================================================
 
+import { lazy, Suspense, type FC } from 'react';
 import NotImplemented from '@/components/NotImplemented';
-import IPMasterControl from './IPMasterControl';
-import FileManager from './FileManager';
-import Terminal from './Terminal';
-import Calculator from './Calculator';
-import TextEditor from './TextEditor';
-import Settings from './Settings';
-import SystemMonitor from './SystemMonitor';
-import Calendar from './Calendar';
-import Notes from './Notes';
-import Todo from './Todo';
-import Clock from './Clock';
-import Spreadsheet from './Spreadsheet';
-import ArchiveManager from './ArchiveManager';
-import Browser from './Browser';
-import Email from './Email';
-import Chat from './Chat';
-import Weather from './Weather';
-import MusicPlayer from './MusicPlayer';
-import VideoPlayer from './VideoPlayer';
-import ImageViewer from './ImageViewer';
-import PhotoEditor from './PhotoEditor';
-import VoiceRecorder from './VoiceRecorder';
-import ScreenRecorder from './ScreenRecorder';
-import Minesweeper from './Minesweeper';
-import Snake from './Snake';
-import Tetris from './Tetris';
-import TicTacToe from './TicTacToe';
-import Game2048 from './Game2048';
-import Sudoku from './Sudoku';
-import Chess from './Chess';
-import Memory from './Memory';
-import Pong from './Pong';
-import Solitaire from './Solitaire';
-import CodeEditor from './CodeEditor';
-import JsonFormatter from './JsonFormatter';
-import RegexTester from './RegexTester';
-import MarkdownPreview from './MarkdownPreview';
-import GitClient from './GitClient';
-import ApiTester from './ApiTester';
-import Base64Tool from './Base64Tool';
-import ColorPalette from './ColorPalette';
-import Drawing from './Drawing';
-import ColorPicker from './ColorPicker';
-import ImageGallery from './ImageGallery';
-import AsciiArt from './AsciiArt';
-import DocumentViewer from './DocumentViewer';
-import Reminders from './Reminders';
-import Contacts from './Contacts';
-import PasswordManager from './PasswordManager';
-import Whiteboard from './Whiteboard';
-import RssReader from './RssReader';
-import FtpClient from './FtpClient';
-import NetworkTools from './NetworkTools';
-import MediaConverter from './MediaConverter';
-import FlappyBird from './FlappyBird';
-import MatrixRain from './MatrixRain';
-import type { FC } from 'react';
+import AppIcon from '@/components/AppIcon';
+import { getAppById } from './registry';
 
 interface AppRouterProps {
   appId: string;
   windowId: string;
 }
 
+const appComponents: Record<string, ReturnType<typeof lazy<FC>>> = {
+  ipmastercontrol: lazy(() => import('./IPMasterControl')),
+  filemanager: lazy(() => import('./FileManager')),
+  terminal: lazy(() => import('./Terminal')),
+  calculator: lazy(() => import('./Calculator')),
+  texteditor: lazy(() => import('./TextEditor')),
+  settings: lazy(() => import('./Settings')),
+  systemmonitor: lazy(() => import('./SystemMonitor')),
+  calendar: lazy(() => import('./Calendar')),
+  notes: lazy(() => import('./Notes')),
+  todo: lazy(() => import('./Todo')),
+  clock: lazy(() => import('./Clock')),
+  spreadsheet: lazy(() => import('./Spreadsheet')),
+  archivemanager: lazy(() => import('./ArchiveManager')),
+  browser: lazy(() => import('./Browser')),
+  email: lazy(() => import('./Email')),
+  chat: lazy(() => import('./Chat')),
+  weather: lazy(() => import('./Weather')),
+  musicplayer: lazy(() => import('./MusicPlayer')),
+  videoplayer: lazy(() => import('./VideoPlayer')),
+  imageviewer: lazy(() => import('./ImageViewer')),
+  photoeditor: lazy(() => import('./PhotoEditor')),
+  voicerecorder: lazy(() => import('./VoiceRecorder')),
+  screenrecorder: lazy(() => import('./ScreenRecorder')),
+  minesweeper: lazy(() => import('./Minesweeper')),
+  snake: lazy(() => import('./Snake')),
+  tetris: lazy(() => import('./Tetris')),
+  tictactoe: lazy(() => import('./TicTacToe')),
+  game2048: lazy(() => import('./Game2048')),
+  sudoku: lazy(() => import('./Sudoku')),
+  chess: lazy(() => import('./Chess')),
+  memory: lazy(() => import('./Memory')),
+  pong: lazy(() => import('./Pong')),
+  solitaire: lazy(() => import('./Solitaire')),
+  codeeditor: lazy(() => import('./CodeEditor')),
+  jsonformatter: lazy(() => import('./JsonFormatter')),
+  regextester: lazy(() => import('./RegexTester')),
+  markdownpreview: lazy(() => import('./MarkdownPreview')),
+  gitclient: lazy(() => import('./GitClient')),
+  apitester: lazy(() => import('./ApiTester')),
+  base64tool: lazy(() => import('./Base64Tool')),
+  colorpalette: lazy(() => import('./ColorPalette')),
+  drawing: lazy(() => import('./Drawing')),
+  colorpicker: lazy(() => import('./ColorPicker')),
+  imagegallery: lazy(() => import('./ImageGallery')),
+  asciiart: lazy(() => import('./AsciiArt')),
+  documentviewer: lazy(() => import('./DocumentViewer')),
+  reminders: lazy(() => import('./Reminders')),
+  contacts: lazy(() => import('./Contacts')),
+  passwordmanager: lazy(() => import('./PasswordManager')),
+  whiteboard: lazy(() => import('./Whiteboard')),
+  rssreader: lazy(() => import('./RssReader')),
+  ftpclient: lazy(() => import('./FtpClient')),
+  networktools: lazy(() => import('./NetworkTools')),
+  mediaconverter: lazy(() => import('./MediaConverter')),
+  flappybird: lazy(() => import('./FlappyBird')),
+  matrixrain: lazy(() => import('./MatrixRain')),
+};
+
+function AppLoading({ appId }: { appId: string }) {
+  const app = getAppById(appId);
+  return (
+    <div className="h-full flex flex-col items-center justify-center gap-3" style={{ background: 'var(--bg-window)', color: 'var(--text-secondary)' }}>
+      <AppIcon appId={appId} size={64} />
+      <div className="flex items-center gap-2">
+        <span className="w-3 h-3 rounded-full border-2 border-white/20 border-t-[var(--accent-primary)] animate-spin" />
+        <span className="text-xs">Loading {app?.name || 'application'}...</span>
+      </div>
+    </div>
+  );
+}
+
 const AppRouter: FC<AppRouterProps> = ({ appId }) => {
-  switch (appId) {
-    case 'ipmastercontrol':
-      return <IPMasterControl />;
-    case 'filemanager':
-      return <FileManager />;
-    case 'terminal':
-      return <Terminal />;
-    case 'calculator':
-      return <Calculator />;
-    case 'texteditor':
-      return <TextEditor />;
-    case 'settings':
-      return <Settings />;
-    case 'systemmonitor':
-      return <SystemMonitor />;
-    case 'calendar':
-      return <Calendar />;
-    case 'notes':
-      return <Notes />;
-    case 'todo':
-      return <Todo />;
-    case 'clock':
-      return <Clock />;
-    case 'spreadsheet':
-      return <Spreadsheet />;
-    case 'archivemanager':
-      return <ArchiveManager />;
-    case 'browser':
-      return <Browser />;
-    case 'email':
-      return <Email />;
-    case 'chat':
-      return <Chat />;
-    case 'weather':
-      return <Weather />;
-    case 'musicplayer':
-      return <MusicPlayer />;
-    case 'videoplayer':
-      return <VideoPlayer />;
-    case 'imageviewer':
-      return <ImageViewer />;
-    case 'photoeditor':
-      return <PhotoEditor />;
-    case 'voicerecorder':
-      return <VoiceRecorder />;
-    case 'screenrecorder':
-      return <ScreenRecorder />;
-    case 'minesweeper':
-      return <Minesweeper />;
-    case 'snake':
-      return <Snake />;
-    case 'tetris':
-      return <Tetris />;
-    case 'tictactoe':
-      return <TicTacToe />;
-    case 'game2048':
-      return <Game2048 />;
-    case 'sudoku':
-      return <Sudoku />;
-    case 'chess':
-      return <Chess />;
-    case 'memory':
-      return <Memory />;
-    case 'pong':
-      return <Pong />;
-    case 'solitaire':
-      return <Solitaire />;
-    case 'codeeditor':
-      return <CodeEditor />;
-    case 'jsonformatter':
-      return <JsonFormatter />;
-    case 'regextester':
-      return <RegexTester />;
-    case 'markdownpreview':
-      return <MarkdownPreview />;
-    case 'gitclient':
-      return <GitClient />;
-    case 'apitester':
-      return <ApiTester />;
-    case 'base64tool':
-      return <Base64Tool />;
-    case 'colorpalette':
-      return <ColorPalette />;
-    case 'drawing':
-      return <Drawing />;
-    case 'colorpicker':
-      return <ColorPicker />;
-    case 'imagegallery':
-      return <ImageGallery />;
-    case 'asciiart':
-      return <AsciiArt />;
-    case 'documentviewer':
-      return <DocumentViewer />;
-    case 'reminders':
-      return <Reminders />;
-    case 'contacts':
-      return <Contacts />;
-    case 'passwordmanager':
-      return <PasswordManager />;
-    case 'whiteboard':
-      return <Whiteboard />;
-    case 'rssreader':
-      return <RssReader />;
-    case 'ftpclient':
-      return <FtpClient />;
-    case 'networktools':
-      return <NetworkTools />;
-    case 'mediaconverter':
-      return <MediaConverter />;
-    case 'flappybird':
-      return <FlappyBird />;
-    case 'matrixrain':
-      return <MatrixRain />;
-    default:
-      return <NotImplemented appId={appId} />;
-  }
+  const AppComponent = appComponents[appId];
+  if (!AppComponent) return <NotImplemented appId={appId} />;
+
+  return (
+    <Suspense fallback={<AppLoading appId={appId} />}>
+      <AppComponent />
+    </Suspense>
+  );
 };
 
 export default AppRouter;
