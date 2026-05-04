@@ -54,7 +54,7 @@ const defaultDockPreferences: DockPreferences = {
   magnification: 1.38,
   transparency: 0.55,
   position: 'bottom',
-  showTasks: true,
+  showTasks: false,
   compact: false,
 };
 
@@ -86,7 +86,7 @@ const createWindow = (state: OSState, appId: string, title?: string): Window => 
     DevTools: { w: 0.8, h: 0.78 },
     Creative: { w: 0.76, h: 0.76 },
   };
-  const bottomReserve = state.dockPreferences.showTasks ? 156 : 104;
+  const bottomReserve = 104;
   const availableW = Math.max(360, vw - 56);
   const availableH = Math.max(300, vh - TOP_PANEL_HEIGHT - bottomReserve - 24);
   const ratios = categoryRatio[app.category] || { w: 0.72, h: 0.7 };
@@ -826,7 +826,7 @@ export const OSProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       storageGet<DesktopIcon[]>('iplinux_desktop_icons_v6'),
       storageGet<OSState['theme']>('iplinux_theme_v2'),
       storageGet<UIPreferences>('iplinux_ui_preferences_v2'),
-      storageGet<DockPreferences>('iplinux_dock_preferences_v1'),
+      storageGet<DockPreferences>('iplinux_dock_preferences_v2'),
       storageGet<SystemControlState>('iplinux_system_controls_v1'),
     ]).then(([savedIcons, savedTheme, savedUIPrefs, savedDockPrefs, savedControls]) => {
       if (savedTheme) dispatch({ type: 'SET_THEME', theme: savedTheme });
@@ -859,7 +859,7 @@ export const OSProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
   useEffect(() => {
     if (!isLoaded) return;
-    storageSet('iplinux_dock_preferences_v1', state.dockPreferences);
+    storageSet('iplinux_dock_preferences_v2', state.dockPreferences);
   }, [isLoaded, state.dockPreferences]);
 
   useEffect(() => {

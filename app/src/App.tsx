@@ -15,7 +15,6 @@ import ContextMenu from '@/components/ContextMenu';
 import NotificationSystem from '@/components/NotificationSystem';
 import NotificationCenter from '@/components/NotificationCenter';
 import AppIcon from '@/components/AppIcon';
-import OpenTasksBar from '@/components/OpenTasksBar';
 import GlobalSearch from '@/components/GlobalSearch';
 import DesktopWidgets from '@/components/Widgets';
 import ReactiveWallpaper from '@/components/ReactiveWallpaper';
@@ -148,7 +147,6 @@ function AppShell() {
           <TopPanel />
 
           {/* Dock */}
-          <OpenTasksBar />
           <Dock />
 
           {/* Overlays */}

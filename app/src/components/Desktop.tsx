@@ -379,7 +379,7 @@ const Desktop = memo(function Desktop() {
     <div
       ref={desktopRef}
       className="fixed inset-0 z-10 outline-none overflow-hidden"
-      style={{ top: 28, bottom: state.dockPreferences.showTasks ? 126 : 76 }}
+      style={{ top: 28, bottom: 76 }}
       tabIndex={0}
       onMouseDown={handleDesktopMouseDown}
       onMouseMove={handleMouseMove}

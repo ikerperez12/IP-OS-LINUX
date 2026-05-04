@@ -248,16 +248,9 @@ const Settings: React.FC = () => {
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Dock & Footer</h2>
-              <p className="text-xs text-[var(--text-secondary)] mt-1">Tune the bottom glass bar, open tasks strip, and icon magnification.</p>
+              <p className="text-xs text-[var(--text-secondary)] mt-1">Tune the main bottom dock, glass density, and icon magnification.</p>
             </div>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm text-[var(--text-primary)]">Show Open Tasks Bar</div>
-                  <div className="text-xs text-[var(--text-secondary)]">Display minimized/open windows above the dock</div>
-                </div>
-                <Toggle value={state.dockPreferences.showTasks} onChange={v => dispatch({ type: 'SET_DOCK_PREFERENCES', preferences: { showTasks: v } })} />
-              </div>
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm text-[var(--text-primary)]">Compact Dock</div>
