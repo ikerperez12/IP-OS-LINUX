@@ -4,7 +4,26 @@
 
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useState } from 'react';
 import { storageGet, storageSet } from '@/lib/storage';
-import type { OSState, OSAction, Window, DesktopIcon, Notification, DockItem, WindowState, UIPreferences } from '@/types';
+import {
+  arrangeDesktopIcons,
+  createDesktopGridMetrics,
+  moveItemsToGrid,
+  normalizePositionToGrid,
+} from '@/lib/desktopLayoutEngine';
+import type {
+  OSState,
+  OSAction,
+  Window,
+  DesktopIcon,
+  DesktopFolderItem,
+  Notification,
+  DockItem,
+  WindowState,
+  UIPreferences,
+  DockPreferences,
+  SystemControlState,
+  AppCategory,
+} from '@/types';
 import { APP_REGISTRY, getAppById, getDefaultDockApps } from '@/apps/registry';
 
 // ---- Helpers ----
@@ -30,6 +49,25 @@ const defaultUIPreferences: UIPreferences = {
   tabletMode: isTabletViewport(),
 };
 
+const defaultDockPreferences: DockPreferences = {
+  size: 52,
+  magnification: 1.38,
+  transparency: 0.55,
+  position: 'bottom',
+  showTasks: true,
+  compact: false,
+};
+
+const defaultSystemControls: SystemControlState = {
+  volume: 78,
+  muted: false,
+  networkEnabled: true,
+  bluetoothEnabled: false,
+  keyboardLayout: 'US',
+  highContrast: false,
+  batterySaver: false,
+};
+
 const supabaseConfigured = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
 
 const createWindow = (state: OSState, appId: string, title?: string): Window => {
@@ -39,11 +77,25 @@ const createWindow = (state: OSState, appId: string, title?: string): Window => 
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const shouldMaximize = state.uiPreferences.tabletMode || isTabletViewport();
-  const offset = (state.windows.filter((w) => w.appId === appId && w.state !== 'minimized').length) * 30;
-  const width = Math.min(app.defaultSize.width, vw - 40);
-  const height = Math.min(app.defaultSize.height, vh - TOP_PANEL_HEIGHT - 80); // padding for dock
-  const x = Math.max(20, Math.min(vw - width - 20, 60 + offset));
-  const y = Math.max(TOP_PANEL_HEIGHT + 10, Math.min(vh - height - 80, 40 + offset));
+  const categoryRatio: Record<AppCategory, { w: number; h: number }> = {
+    System: { w: 0.68, h: 0.66 },
+    Productivity: { w: 0.72, h: 0.72 },
+    Internet: { w: 0.78, h: 0.76 },
+    Media: { w: 0.72, h: 0.7 },
+    Games: { w: 0.56, h: 0.68 },
+    DevTools: { w: 0.8, h: 0.78 },
+    Creative: { w: 0.76, h: 0.76 },
+  };
+  const bottomReserve = state.dockPreferences.showTasks ? 156 : 104;
+  const availableW = Math.max(360, vw - 56);
+  const availableH = Math.max(300, vh - TOP_PANEL_HEIGHT - bottomReserve - 24);
+  const ratios = categoryRatio[app.category] || { w: 0.72, h: 0.7 };
+  const width = Math.min(availableW, Math.max(app.defaultSize.width, Math.round(availableW * ratios.w)));
+  const height = Math.min(availableH, Math.max(app.defaultSize.height, Math.round(availableH * ratios.h)));
+  const visibleCount = state.windows.filter((w) => w.state !== 'minimized').length;
+  const offset = (visibleCount % 6) * 28;
+  const x = Math.max(18, Math.min(vw - width - 18, Math.round((vw - width) / 2) + offset));
+  const y = Math.max(TOP_PANEL_HEIGHT + 12, Math.min(vh - bottomReserve - height, TOP_PANEL_HEIGHT + Math.round((availableH - height) / 2) + 22 + offset));
   return {
     id,
     appId,
@@ -59,38 +111,51 @@ const createWindow = (state: OSState, appId: string, title?: string): Window => 
 };
 
 // ---- Initial State ----
-const defaultDesktopIcons: DesktopIcon[] = [
-  // Row 1
-  { id: 'desk-ip-master', name: 'IP Master', icon: 'Activity', appId: 'ipmastercontrol', position: { x: 20, y: 16 }, isSelected: false },
-  { id: 'desk-browser', name: 'Web Browser', icon: 'Globe', appId: 'browser', position: { x: 140, y: 16 }, isSelected: false },
-  { id: 'desk-terminal', name: 'Terminal', icon: 'Terminal', appId: 'terminal', position: { x: 260, y: 16 }, isSelected: false },
-  { id: 'desk-code', name: 'Code Editor', icon: 'Code', appId: 'codeeditor', position: { x: 380, y: 16 }, isSelected: false },
-  // Row 2
-  { id: 'desk-home', name: 'Files', icon: 'Home', appId: 'filemanager', position: { x: 20, y: 146 }, isSelected: false },
-  { id: 'desk-text', name: 'Text Editor', icon: 'FileText', appId: 'texteditor', position: { x: 140, y: 146 }, isSelected: false },
-  { id: 'desk-notes', name: 'Notes', icon: 'StickyNote', appId: 'notes', position: { x: 260, y: 146 }, isSelected: false },
-  { id: 'desk-draw', name: 'Drawing', icon: 'PenTool', appId: 'drawing', position: { x: 380, y: 146 }, isSelected: false },
-  // Row 3
-  { id: 'desk-music', name: 'Music', icon: 'Music', appId: 'musicplayer', position: { x: 20, y: 276 }, isSelected: false },
-  { id: 'desk-video', name: 'Videos', icon: 'Video', appId: 'videoplayer', position: { x: 140, y: 276 }, isSelected: false },
-  { id: 'desk-weather', name: 'Weather', icon: 'Cloud', appId: 'weather', position: { x: 260, y: 276 }, isSelected: false },
-  { id: 'desk-chat', name: 'Chat', icon: 'MessageSquare', appId: 'chat', position: { x: 380, y: 276 }, isSelected: false },
-  // Row 4
-  { id: 'desk-calc', name: 'Calculator', icon: 'Calculator', appId: 'calculator', position: { x: 20, y: 406 }, isSelected: false },
-  { id: 'desk-calendar', name: 'Calendar', icon: 'Calendar', appId: 'calendar', position: { x: 140, y: 406 }, isSelected: false },
-  { id: 'desk-settings', name: 'Settings', icon: 'Settings', appId: 'settings', position: { x: 260, y: 406 }, isSelected: false },
-  { id: 'desk-monitor', name: 'System', icon: 'Cpu', appId: 'systemmonitor', position: { x: 380, y: 406 }, isSelected: false },
-  // Row 5
-  { id: 'desk-games', name: 'Minesweeper', icon: 'Grid', appId: 'minesweeper', position: { x: 20, y: 536 }, isSelected: false },
-  { id: 'desk-snake', name: 'Snake', icon: 'Gamepad2', appId: 'snake', position: { x: 140, y: 536 }, isSelected: false },
-  { id: 'desk-chess', name: 'Chess', icon: 'Crown', appId: 'chess', position: { x: 260, y: 536 }, isSelected: false },
-  { id: 'desk-matrix', name: 'Matrix Rain', icon: 'Droplets', appId: 'matrixrain', position: { x: 380, y: 536 }, isSelected: false },
-  // Row 6
-  { id: 'desk-todo', name: 'Todo', icon: 'CheckSquare', appId: 'todo', position: { x: 20, y: 666 }, isSelected: false },
-  { id: 'desk-color', name: 'Colors', icon: 'Palette', appId: 'colorpicker', position: { x: 140, y: 666 }, isSelected: false },
-  { id: 'desk-image', name: 'Gallery', icon: 'Image', appId: 'imagegallery', position: { x: 260, y: 666 }, isSelected: false },
-  { id: 'desk-trash', name: 'Trash', icon: 'Trash2', appId: 'filemanager', position: { x: 380, y: 666 }, isSelected: false },
-];
+const categoryMeta: Record<AppCategory, { name: string; icon: string; accent: string; order: number }> = {
+  System: { name: 'System', icon: 'Cpu', accent: '#64748B', order: 0 },
+  Internet: { name: 'Internet', icon: 'Globe', accent: '#0EA5E9', order: 1 },
+  Productivity: { name: 'Productivity', icon: 'Briefcase', accent: '#8B5CF6', order: 2 },
+  Media: { name: 'Media', icon: 'Music', accent: '#EC4899', order: 3 },
+  Games: { name: 'Games', icon: 'Gamepad2', accent: '#22C55E', order: 4 },
+  Creative: { name: 'Creative', icon: 'Palette', accent: '#F97316', order: 5 },
+  DevTools: { name: 'Dev Tools', icon: 'Code2', accent: '#14B8A6', order: 6 },
+};
+
+const toFolderItem = (app: typeof APP_REGISTRY[number]): DesktopFolderItem => ({
+  id: `child-${app.id}`,
+  name: app.name,
+  icon: app.icon,
+  appId: app.id,
+});
+
+const createDefaultDesktopIcons = (): DesktopIcon[] => {
+  const grouped = APP_REGISTRY.reduce((acc, app) => {
+    const key = app.category;
+    acc[key] = [...(acc[key] || []), toFolderItem(app)];
+    return acc;
+  }, {} as Record<AppCategory, DesktopFolderItem[]>);
+
+  const folders = (Object.keys(categoryMeta) as AppCategory[])
+    .sort((a, b) => categoryMeta[a].order - categoryMeta[b].order)
+    .map((category, index) => {
+      const meta = categoryMeta[category];
+      return {
+        id: `desk-folder-${category.toLowerCase()}`,
+        name: meta.name,
+        icon: meta.icon,
+        kind: 'folder' as const,
+        position: { x: 26 + (index % 4) * 126, y: 18 + Math.floor(index / 4) * 136 },
+        isSelected: false,
+        children: grouped[category] || [],
+        folderAccent: meta.accent,
+        folderLayout: 'grid' as const,
+      };
+    });
+
+  return folders;
+};
+
+const defaultDesktopIcons: DesktopIcon[] = createDefaultDesktopIcons();
 
 const createInitialDockItems = (): DockItem[] => {
   const pinned = getDefaultDockApps();
@@ -107,6 +172,46 @@ const loadDesktopIcons = (): DesktopIcon[] => {
   return defaultDesktopIcons;
 };
 
+const desktopMetricsForViewport = (state: OSState) => (
+  createDesktopGridMetrics(
+    window.innerWidth,
+    Math.max(320, window.innerHeight - TOP_PANEL_HEIGHT - 96),
+    state.uiPreferences.tabletMode,
+    state.uiPreferences.iconScale
+  )
+);
+
+const iconToFolderItem = (icon: DesktopIcon): DesktopFolderItem[] => {
+  if (icon.kind === 'folder') return icon.children || [];
+  return [{
+    id: `child-${icon.id}`,
+    name: icon.name,
+    icon: icon.icon,
+    appId: icon.appId,
+  }];
+};
+
+const compactFolders = (icons: DesktopIcon[], metrics: ReturnType<typeof desktopMetricsForViewport>): DesktopIcon[] => {
+  const expanded = icons.flatMap((icon) => {
+    if (icon.kind !== 'folder' || !icon.children) return [icon];
+    if (icon.children.length === 0) return [];
+    if (icon.children.length === 1) {
+      const child = icon.children[0];
+      return [{
+        id: `desk-${child.appId || child.id}-${generateId()}`,
+        name: child.name,
+        icon: child.icon,
+        kind: 'app' as const,
+        appId: child.appId,
+        position: icon.position,
+        isSelected: icon.isSelected,
+      }];
+    }
+    return [icon];
+  });
+  return arrangeDesktopIcons(expanded, metrics);
+};
+
 const initialState: OSState = {
   bootPhase: 'off',
   auth: { isAuthenticated: false, isGuest: false, userName: 'User' },
@@ -116,9 +221,13 @@ const initialState: OSState = {
   theme: {
     mode: 'dark',
     accent: '#7C4DFF',
-    wallpaper: '',
+    wallpaper: 'default',
+    wallpaperMode: 'animated',
+    animatedWallpaper: 'aurora',
   },
   uiPreferences: defaultUIPreferences,
+  dockPreferences: defaultDockPreferences,
+  systemControls: defaultSystemControls,
   integrationStatus: {
     supabaseConfigured,
     aiConfigured: supabaseConfigured,
@@ -392,8 +501,14 @@ function osReducer(state: OSState, action: OSAction): OSState {
     }
 
     case 'ADD_DESKTOP_ICON': {
-      const icon: DesktopIcon = { ...action.icon, id: generateId() };
-      const next = [...state.desktopIcons, icon];
+      const metrics = desktopMetricsForViewport(state);
+      const icon: DesktopIcon = {
+        ...action.icon,
+        id: generateId(),
+        kind: action.icon.kind || 'app',
+        position: normalizePositionToGrid(action.icon.position, metrics),
+      };
+      const next = arrangeDesktopIcons([...state.desktopIcons, icon], metrics);
       return { ...state, desktopIcons: next };
     }
 
@@ -409,17 +524,91 @@ function osReducer(state: OSState, action: OSAction): OSState {
     }
 
     case 'UPDATE_DESKTOP_ICON_POSITION': {
+      const metrics = desktopMetricsForViewport(state);
       const next = state.desktopIcons.map((i) =>
-        i.id === action.id ? { ...i, position: action.position } : i
+        i.id === action.id ? { ...i, position: normalizePositionToGrid(action.position, metrics) } : i
       );
       return { ...state, desktopIcons: next };
     }
 
     case 'UPDATE_DESKTOP_ICON_POSITIONS': {
+      const metrics = desktopMetricsForViewport(state);
       const next = state.desktopIcons.map((i) =>
-        action.positions[i.id] ? { ...i, position: action.positions[i.id] } : i
+        action.positions[i.id] ? { ...i, position: normalizePositionToGrid(action.positions[i.id], metrics) } : i
       );
-      return { ...state, desktopIcons: next };
+      return { ...state, desktopIcons: arrangeDesktopIcons(next, metrics) };
+    }
+
+    case 'MOVE_DESKTOP_ITEMS_TO_CELL': {
+      const metrics = desktopMetricsForViewport(state);
+      return {
+        ...state,
+        desktopIcons: moveItemsToGrid(state.desktopIcons, action.ids, action.anchorPosition, metrics),
+      };
+    }
+
+    case 'CREATE_DESKTOP_FOLDER': {
+      const metrics = desktopMetricsForViewport(state);
+      const sourceSet = new Set(action.sourceIds);
+      if (action.targetId) sourceSet.add(action.targetId);
+      const sourceIcons = state.desktopIcons.filter((icon) => sourceSet.has(icon.id));
+      if (sourceIcons.length < 2) return state;
+      const folderPosition = normalizePositionToGrid(action.position || sourceIcons[0].position, metrics);
+      const children = sourceIcons.flatMap(iconToFolderItem);
+      const folder: DesktopIcon = {
+        id: `desk-folder-${generateId()}`,
+        name: action.name || 'New Folder',
+        icon: 'Folder',
+        kind: 'folder',
+        position: folderPosition,
+        isSelected: true,
+        children,
+        folderAccent: '#7C4DFF',
+        folderLayout: 'grid',
+      };
+      const next = state.desktopIcons
+        .filter((icon) => !sourceSet.has(icon.id))
+        .map((icon) => ({ ...icon, isSelected: false }));
+      return { ...state, desktopIcons: moveItemsToGrid([...next, folder], [folder.id], folderPosition, metrics) };
+    }
+
+    case 'MOVE_DESKTOP_ITEM_TO_FOLDER': {
+      const metrics = desktopMetricsForViewport(state);
+      const source = state.desktopIcons.find((icon) => icon.id === action.sourceId);
+      const folder = state.desktopIcons.find((icon) => icon.id === action.folderId && icon.kind === 'folder');
+      if (!source || !folder || source.id === folder.id) return state;
+      const sourceChildren = iconToFolderItem(source);
+      const next = state.desktopIcons
+        .filter((icon) => icon.id !== source.id)
+        .map((icon) => icon.id === folder.id
+          ? {
+              ...icon,
+              children: [...(icon.children || []), ...sourceChildren],
+              isSelected: true,
+            }
+          : { ...icon, isSelected: false });
+      return { ...state, desktopIcons: compactFolders(next, metrics) };
+    }
+
+    case 'REMOVE_DESKTOP_ITEM_FROM_FOLDER': {
+      const metrics = desktopMetricsForViewport(state);
+      const folder = state.desktopIcons.find((icon) => icon.id === action.folderId && icon.kind === 'folder');
+      const child = folder?.children?.find((item) => item.id === action.childId);
+      if (!folder || !child) return state;
+      const nextFolderChildren = (folder.children || []).filter((item) => item.id !== child.id);
+      const newIcon: DesktopIcon = {
+        id: `desk-${child.appId || child.id}-${generateId()}`,
+        name: child.name,
+        icon: child.icon,
+        kind: 'app',
+        appId: child.appId,
+        position: normalizePositionToGrid(action.position || folder.position, metrics),
+        isSelected: true,
+      };
+      const next = state.desktopIcons
+        .map((icon) => icon.id === folder.id ? { ...icon, children: nextFolderChildren, isSelected: false } : icon)
+        .concat(newIcon);
+      return { ...state, desktopIcons: compactFolders(next, metrics) };
     }
 
     case 'SELECT_DESKTOP_ICON': {
@@ -447,6 +636,30 @@ function osReducer(state: OSState, action: OSAction): OSState {
 
     case 'SET_UI_PREFERENCES': {
       return { ...state, uiPreferences: { ...state.uiPreferences, ...action.preferences } };
+    }
+
+    case 'SET_WALLPAPER_MODE': {
+      return { ...state, theme: { ...state.theme, wallpaperMode: action.mode } };
+    }
+
+    case 'SET_ANIMATED_WALLPAPER': {
+      return { ...state, theme: { ...state.theme, animatedWallpaper: action.wallpaper, wallpaperMode: 'animated' } };
+    }
+
+    case 'SET_DOCK_PREFERENCES': {
+      return { ...state, dockPreferences: { ...state.dockPreferences, ...action.preferences } };
+    }
+
+    case 'SET_SYSTEM_CONTROLS': {
+      const controls = { ...state.systemControls, ...action.controls };
+      const nextPrefs = action.controls.batterySaver === undefined
+        ? state.uiPreferences
+        : {
+            ...state.uiPreferences,
+            reduceMotion: action.controls.batterySaver ? true : state.uiPreferences.reduceMotion,
+            wallpaperQuality: action.controls.batterySaver ? 'low' as const : state.uiPreferences.wallpaperQuality,
+          };
+      return { ...state, systemControls: controls, uiPreferences: nextPrefs };
     }
 
     case 'SET_TABLET_MODE': {
@@ -582,30 +795,13 @@ function osReducer(state: OSState, action: OSAction): OSState {
     }
 
     case 'ARRANGE_DESKTOP_ICONS': {
-      const GRID_X = 120;
-      const GRID_Y = 130;
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const cols = Math.floor((vw - 40) / GRID_X) || 1;
-      const rows = Math.floor((vh - 100) / GRID_Y) || 1;
-
-      const next = state.desktopIcons.map((icon, idx) => {
-        const col = idx % cols;
-        const row = Math.floor(idx / cols) % rows;
-        return {
-          ...icon,
-          position: {
-            x: 20 + col * GRID_X,
-            y: 16 + row * GRID_Y,
-          },
-        };
-      });
-
-      return { ...state, desktopIcons: next };
+      const metrics = desktopMetricsForViewport(state);
+      return { ...state, desktopIcons: arrangeDesktopIcons(state.desktopIcons, metrics) };
     }
 
     case 'SET_DESKTOP_ICONS': {
-      return { ...state, desktopIcons: action.icons };
+      const metrics = desktopMetricsForViewport(state);
+      return { ...state, desktopIcons: arrangeDesktopIcons(action.icons, metrics) };
     }
 
     default:
@@ -626,9 +822,10 @@ export const OSProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    storageGet<DesktopIcon[]>('iplinux_desktop_icons_v5').then((saved) => {
+    storageGet<DesktopIcon[]>('iplinux_desktop_icons_v6').then((saved) => {
       if (saved) {
-        dispatch({ type: 'SET_DESKTOP_ICONS', icons: saved });
+        const metrics = desktopMetricsForViewport(initialState);
+        dispatch({ type: 'SET_DESKTOP_ICONS', icons: arrangeDesktopIcons(saved, metrics) });
       }
       setIsLoaded(true);
     });
@@ -636,7 +833,7 @@ export const OSProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
   useEffect(() => {
     if (isLoaded) {
-      storageSet('iplinux_desktop_icons_v5', state.desktopIcons);
+      storageSet('iplinux_desktop_icons_v6', state.desktopIcons);
     }
   }, [state.desktopIcons, isLoaded]);
 

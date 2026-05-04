@@ -88,10 +88,23 @@ export interface DesktopIcon {
   id: string;
   name: string;
   icon: string;
+  kind?: DesktopItemKind;
   appId?: string;
   fileSystemNodeId?: string;
   position: Position;
   isSelected: boolean;
+  children?: DesktopFolderItem[];
+  folderAccent?: string;
+  folderLayout?: 'grid' | 'compact';
+}
+
+export type DesktopItemKind = 'app' | 'folder';
+
+export interface DesktopFolderItem {
+  id: string;
+  name: string;
+  icon: string;
+  appId?: string;
 }
 
 // --------------------------------------------------------
@@ -99,11 +112,15 @@ export interface DesktopIcon {
 // --------------------------------------------------------
 
 export type ThemeMode = 'dark' | 'light';
+export type WallpaperMode = 'static' | 'animated';
+export type AnimatedWallpaperId = 'aurora' | 'nebula' | 'particles' | 'liquid' | 'grid';
 
 export interface Theme {
   mode: ThemeMode;
   accent: string;
   wallpaper: string;
+  wallpaperMode: WallpaperMode;
+  animatedWallpaper: AnimatedWallpaperId;
 }
 
 export interface UIPreferences {
@@ -112,6 +129,25 @@ export interface UIPreferences {
   wallpaperQuality: 'low' | 'medium' | 'high' | 'ultra';
   iconScale: number;
   tabletMode: boolean;
+}
+
+export interface DockPreferences {
+  size: number;
+  magnification: number;
+  transparency: number;
+  position: 'bottom';
+  showTasks: boolean;
+  compact: boolean;
+}
+
+export interface SystemControlState {
+  volume: number;
+  muted: boolean;
+  networkEnabled: boolean;
+  bluetoothEnabled: boolean;
+  keyboardLayout: string;
+  highContrast: boolean;
+  batterySaver: boolean;
 }
 
 export interface IntegrationStatus {
@@ -204,6 +240,8 @@ export interface OSState {
   desktopIcons: DesktopIcon[];
   theme: Theme;
   uiPreferences: UIPreferences;
+  dockPreferences: DockPreferences;
+  systemControls: SystemControlState;
   integrationStatus: IntegrationStatus;
   notifications: Notification[];
   dockItems: DockItem[];
@@ -246,10 +284,18 @@ export type OSAction =
   | { type: 'REMOVE_DESKTOP_ICONS'; ids: string[] }
   | { type: 'UPDATE_DESKTOP_ICON_POSITION'; id: string; position: Position }
   | { type: 'UPDATE_DESKTOP_ICON_POSITIONS'; positions: Record<string, Position> }
+  | { type: 'MOVE_DESKTOP_ITEMS_TO_CELL'; ids: string[]; anchorPosition: Position }
+  | { type: 'CREATE_DESKTOP_FOLDER'; sourceIds: string[]; targetId?: string; position?: Position; name?: string }
+  | { type: 'MOVE_DESKTOP_ITEM_TO_FOLDER'; sourceId: string; folderId: string }
+  | { type: 'REMOVE_DESKTOP_ITEM_FROM_FOLDER'; folderId: string; childId: string; position?: Position }
   | { type: 'SELECT_DESKTOP_ICON'; id: string | null }
   | { type: 'SELECT_DESKTOP_ICONS'; ids: string[] }
   | { type: 'SET_THEME'; theme: Partial<Theme> }
   | { type: 'SET_UI_PREFERENCES'; preferences: Partial<UIPreferences> }
+  | { type: 'SET_WALLPAPER_MODE'; mode: WallpaperMode }
+  | { type: 'SET_ANIMATED_WALLPAPER'; wallpaper: AnimatedWallpaperId }
+  | { type: 'SET_DOCK_PREFERENCES'; preferences: Partial<DockPreferences> }
+  | { type: 'SET_SYSTEM_CONTROLS'; controls: Partial<SystemControlState> }
   | { type: 'SET_TABLET_MODE'; tabletMode: boolean }
   | { type: 'SET_INTEGRATION_STATUS'; status: Partial<IntegrationStatus> }
   | { type: 'TOGGLE_THEME' }
