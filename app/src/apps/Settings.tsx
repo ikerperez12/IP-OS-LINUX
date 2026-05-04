@@ -6,9 +6,11 @@ import { useState, useCallback } from 'react';
 import {
   Wifi, Bluetooth, Image, Palette, Bell, Volume2, Battery,
   Monitor, Mouse, Keyboard, Printer, Disc, Clock, User,
-  Star, Eye, Info, Search, Check,
+  Star, Eye, Info, Search, Check, PanelBottom, Sparkles,
 } from 'lucide-react';
 import { useOS } from '@/hooks/useOSStore';
+import { ANIMATED_WALLPAPERS, STATIC_WALLPAPERS } from '@/lib/wallpapers';
+import type { AnimatedWallpaperId } from '@/types';
 
 interface SettingCategory {
   id: string;
@@ -21,6 +23,7 @@ const CATEGORIES: SettingCategory[] = [
   { id: 'bluetooth', label: 'Bluetooth', icon: <Bluetooth size={18} /> },
   { id: 'background', label: 'Background', icon: <Image size={18} /> },
   { id: 'appearance', label: 'Appearance', icon: <Palette size={18} /> },
+  { id: 'dockfooter', label: 'Dock & Footer', icon: <PanelBottom size={18} /> },
   { id: 'notifications', label: 'Notifications', icon: <Bell size={18} /> },
   { id: 'sound', label: 'Sound', icon: <Volume2 size={18} /> },
   { id: 'power', label: 'Power', icon: <Battery size={18} /> },
@@ -45,13 +48,6 @@ const ACCENT_COLORS = [
   { name: 'Orange', value: '#FF9800' },
   { name: 'Red', value: '#F44336' },
   { name: 'Pink', value: '#E91E63' },
-];
-
-const WALLPAPERS = [
-  { id: '/wallpaper-default.jpg', name: 'Default' },
-  { id: '/wallpaper-light.jpg', name: 'Light' },
-  { id: '/wallpaper-nature.jpg', name: 'Nature' },
-  { id: '/wallpaper-tech.jpg', name: 'Tech' },
 ];
 
 const Toggle: React.FC<{ value: boolean; onChange: (v: boolean) => void }> = ({ value, onChange }) => (
@@ -172,24 +168,119 @@ const Settings: React.FC = () => {
       case 'background':
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Background</h2>
-            <div className="grid grid-cols-2 gap-4">
-              {WALLPAPERS.map(w => (
+            <div>
+              <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Background</h2>
+              <p className="text-xs text-[var(--text-secondary)] mt-1">
+                One wallpaper engine controls the real desktop layer. Static and animated backgrounds no longer overlap.
+              </p>
+            </div>
+
+            <div className="flex gap-2 p-1 rounded-xl w-fit" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-subtle)' }}>
+              {(['animated', 'static'] as const).map((mode) => (
                 <button
-                  key={w.id}
-                  onClick={() => dispatch({ type: 'SET_THEME', theme: { wallpaper: w.id } })}
-                  className="relative rounded-lg overflow-hidden border-2 transition-all hover:scale-[1.02]"
+                  key={mode}
+                  onClick={() => dispatch({ type: 'SET_WALLPAPER_MODE', mode })}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                   style={{
-                    borderColor: state.theme.wallpaper === w.id ? 'var(--accent-primary)' : 'transparent',
-                    aspectRatio: '16/9',
+                    background: state.theme.wallpaperMode === mode ? 'var(--accent-primary)' : 'transparent',
+                    color: state.theme.wallpaperMode === mode ? 'white' : 'var(--text-secondary)',
                   }}
                 >
-                  <img src={w.id} alt={w.name} className="w-full h-full object-cover" />
-                  <div className="absolute bottom-0 left-0 right-0 px-2 py-1 text-xs text-white" style={{ background: 'rgba(0,0,0,0.6)' }}>
-                    {w.name}
-                  </div>
+                  {mode === 'animated' ? 'Animated' : 'Static'}
                 </button>
               ))}
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] uppercase tracking-wider">
+                <Sparkles size={14} />
+                Animated Wallpapers
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {ANIMATED_WALLPAPERS.map(w => (
+                  <button
+                    key={w.id}
+                    onClick={() => dispatch({ type: 'SET_ANIMATED_WALLPAPER', wallpaper: w.id as AnimatedWallpaperId })}
+                    className="relative rounded-2xl overflow-hidden border-2 transition-all hover:scale-[1.02] text-left"
+                    style={{
+                      borderColor: state.theme.wallpaperMode === 'animated' && state.theme.animatedWallpaper === w.id ? 'var(--accent-primary)' : 'rgba(255,255,255,0.08)',
+                      aspectRatio: '16/9',
+                      background: w.preview,
+                      boxShadow: state.theme.animatedWallpaper === w.id ? '0 0 22px rgba(124,77,255,0.28)' : 'none',
+                    }}
+                  >
+                    <div className="absolute inset-0" style={{ background: 'linear-gradient(transparent 44%, rgba(0,0,0,0.7))' }} />
+                    <div className="absolute bottom-0 left-0 right-0 p-3">
+                      <div className="text-xs font-semibold text-white">{w.name}</div>
+                      <div className="text-[10px] text-white/70 truncate">{w.description}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="text-xs text-[var(--text-secondary)] uppercase tracking-wider">Static Wallpapers</div>
+              <div className="grid grid-cols-2 gap-4">
+                {STATIC_WALLPAPERS.map(w => (
+                  <button
+                    key={w.id}
+                    onClick={() => dispatch({ type: 'SET_THEME', theme: { wallpaper: w.id, wallpaperMode: 'static' } })}
+                    className="relative rounded-2xl overflow-hidden border-2 transition-all hover:scale-[1.02]"
+                    style={{
+                      borderColor: state.theme.wallpaperMode === 'static' && state.theme.wallpaper === w.id ? 'var(--accent-primary)' : 'rgba(255,255,255,0.08)',
+                      aspectRatio: '16/9',
+                      background: w.preview,
+                    }}
+                  >
+                    <div className="absolute bottom-0 left-0 right-0 px-3 py-2 text-xs font-semibold text-white" style={{ background: 'rgba(0,0,0,0.58)' }}>
+                      {w.name}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'dockfooter':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Dock & Footer</h2>
+              <p className="text-xs text-[var(--text-secondary)] mt-1">Tune the bottom glass bar, open tasks strip, and icon magnification.</p>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-[var(--text-primary)]">Show Open Tasks Bar</div>
+                  <div className="text-xs text-[var(--text-secondary)]">Display minimized/open windows above the dock</div>
+                </div>
+                <Toggle value={state.dockPreferences.showTasks} onChange={v => dispatch({ type: 'SET_DOCK_PREFERENCES', preferences: { showTasks: v } })} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-[var(--text-primary)]">Compact Dock</div>
+                  <div className="text-xs text-[var(--text-secondary)]">Useful for small screens</div>
+                </div>
+                <Toggle value={state.dockPreferences.compact} onChange={v => dispatch({ type: 'SET_DOCK_PREFERENCES', preferences: { compact: v } })} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-[var(--text-primary)]">Icon Size</div>
+                <Slider value={state.dockPreferences.size} min={42} max={68} onChange={v => dispatch({ type: 'SET_DOCK_PREFERENCES', preferences: { size: v } })} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-[var(--text-primary)]">Magnification</div>
+                <Slider value={Math.round(state.dockPreferences.magnification * 100)} min={100} max={165} onChange={v => dispatch({ type: 'SET_DOCK_PREFERENCES', preferences: { magnification: v / 100 } })} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-[var(--text-primary)]">Glass Transparency</div>
+                <Slider value={Math.round(state.dockPreferences.transparency * 100)} min={25} max={85} onChange={v => dispatch({ type: 'SET_DOCK_PREFERENCES', preferences: { transparency: v / 100 } })} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-[var(--text-primary)]">System Blur</div>
+                <Slider value={state.uiPreferences.blurIntensity} min={10} max={42} onChange={v => dispatch({ type: 'SET_UI_PREFERENCES', preferences: { blurIntensity: v } })} />
+              </div>
             </div>
           </div>
         );

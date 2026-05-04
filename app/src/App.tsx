@@ -18,6 +18,7 @@ import AppIcon from '@/components/AppIcon';
 import OpenTasksBar from '@/components/OpenTasksBar';
 import GlobalSearch from '@/components/GlobalSearch';
 import DesktopWidgets from '@/components/Widgets';
+import ReactiveWallpaper from '@/components/ReactiveWallpaper';
 
 function AppShell() {
   const { state, dispatch } = useOS();
@@ -131,16 +132,8 @@ function AppShell() {
       {/* Desktop Shell */}
       {showDesktop && (
         <div className="relative w-full h-full" style={{ background: 'var(--bg-desktop)' }}>
-          {/* Wallpaper layer */}
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: `url(${state.theme.wallpaper})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              zIndex: 0,
-            }}
-          />
+          {/* Single wallpaper layer */}
+          <ReactiveWallpaper />
 
           {/* Desktop Widgets layer */}
           <DesktopWidgets />

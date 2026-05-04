@@ -822,10 +822,20 @@ export const OSProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    storageGet<DesktopIcon[]>('iplinux_desktop_icons_v6').then((saved) => {
-      if (saved) {
+    Promise.all([
+      storageGet<DesktopIcon[]>('iplinux_desktop_icons_v6'),
+      storageGet<OSState['theme']>('iplinux_theme_v2'),
+      storageGet<UIPreferences>('iplinux_ui_preferences_v2'),
+      storageGet<DockPreferences>('iplinux_dock_preferences_v1'),
+      storageGet<SystemControlState>('iplinux_system_controls_v1'),
+    ]).then(([savedIcons, savedTheme, savedUIPrefs, savedDockPrefs, savedControls]) => {
+      if (savedTheme) dispatch({ type: 'SET_THEME', theme: savedTheme });
+      if (savedUIPrefs) dispatch({ type: 'SET_UI_PREFERENCES', preferences: savedUIPrefs });
+      if (savedDockPrefs) dispatch({ type: 'SET_DOCK_PREFERENCES', preferences: savedDockPrefs });
+      if (savedControls) dispatch({ type: 'SET_SYSTEM_CONTROLS', controls: savedControls });
+      if (savedIcons) {
         const metrics = desktopMetricsForViewport(initialState);
-        dispatch({ type: 'SET_DESKTOP_ICONS', icons: arrangeDesktopIcons(saved, metrics) });
+        dispatch({ type: 'SET_DESKTOP_ICONS', icons: arrangeDesktopIcons(savedIcons, metrics) });
       }
       setIsLoaded(true);
     });
@@ -836,6 +846,26 @@ export const OSProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       storageSet('iplinux_desktop_icons_v6', state.desktopIcons);
     }
   }, [state.desktopIcons, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    storageSet('iplinux_theme_v2', state.theme);
+  }, [isLoaded, state.theme]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    storageSet('iplinux_ui_preferences_v2', state.uiPreferences);
+  }, [isLoaded, state.uiPreferences]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    storageSet('iplinux_dock_preferences_v1', state.dockPreferences);
+  }, [isLoaded, state.dockPreferences]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    storageSet('iplinux_system_controls_v1', state.systemControls);
+  }, [isLoaded, state.systemControls]);
 
   return (
     <OSContext.Provider value={{ state, dispatch }}>
