@@ -523,7 +523,10 @@ const Desktop = memo(function Desktop() {
         <div
           className="fixed inset-0 z-[260] flex items-center justify-center px-4"
           style={{ background: 'rgba(0,0,0,0.18)', backdropFilter: 'blur(2px)' }}
-          onMouseDown={() => setOpenFolderId(null)}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            setOpenFolderId(null);
+          }}
         >
           <div
             data-folder-panel="true"
@@ -556,7 +559,10 @@ const Desktop = memo(function Desktop() {
                   key={child.id}
                   className="flex flex-col items-center gap-2 rounded-2xl p-2 transition-all hover:scale-105 hover:bg-[rgba(255,255,255,0.07)]"
                   onClick={() => {
-                    if (child.appId) dispatch({ type: 'OPEN_WINDOW', appId: child.appId });
+                    if (child.appId) {
+                      dispatch({ type: 'OPEN_WINDOW', appId: child.appId });
+                      setOpenFolderId(null);
+                    }
                   }}
                 >
                   <AppIcon appId={child.appId || ''} size={64} />
