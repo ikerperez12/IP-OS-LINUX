@@ -8,6 +8,7 @@ import {
   Bold, Italic, Heading, Link, Image, Code, Quote, List,
   ListOrdered, CheckSquare, Minus, Eye, FileCode, Copy, Save, Download, FileUp,
 } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 function markdownToHtml(md: string): string {
   let html = md;
@@ -286,7 +287,7 @@ export default function MarkdownPreview() {
             className="flex-1 overflow-auto p-6 custom-scrollbar"
             style={{ background: 'var(--bg-window)' }}
           >
-            <div dangerouslySetInnerHTML={{ __html: html }} />
+            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html, { ADD_ATTR: ['style', 'target'] }) }} />
           </div>
         </div>
       </div>

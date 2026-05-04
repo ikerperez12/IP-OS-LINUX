@@ -86,29 +86,31 @@ export const getFileAssociation = (filename: string): FileAssociation | undefine
   return FILE_ASSOCIATIONS.find((a) => a.extension === ext);
 };
 
+import { storageGet, storageSet } from '@/lib/storage';
+
 const FS_STORAGE_KEY = 'iplinux_filesystem';
-
-function loadFS(): FileSystemState {
-  try {
-    const saved = localStorage.getItem(FS_STORAGE_KEY);
-    if (saved) return JSON.parse(saved) as FileSystemState;
-  } catch { /* ignore */ }
-  return createDefaultFS();
-}
-
-function saveFS(state: FileSystemState) {
-  try {
-    localStorage.setItem(FS_STORAGE_KEY, JSON.stringify(state));
-  } catch { /* ignore */ }
-}
 
 // ---- Hook ----
 export function useFileSystem() {
-  const [fs, setFs] = useState<FileSystemState>(loadFS);
+  const [fs, setFs] = useState<FileSystemState>(createDefaultFS);
+  const [isLoaded, setIsLoaded] = useState(false);
 
+  // Initial load
   useEffect(() => {
-    saveFS(fs);
-  }, [fs]);
+    storageGet<FileSystemState>(FS_STORAGE_KEY).then((saved) => {
+      if (saved) {
+        setFs(saved);
+      }
+      setIsLoaded(true);
+    });
+  }, []);
+
+  // Save on changes
+  useEffect(() => {
+    if (isLoaded) {
+      storageSet(FS_STORAGE_KEY, fs);
+    }
+  }, [fs, isLoaded]);
 
   const getChildren = useCallback(
     (parentId: string): FileSystemNode[] =>

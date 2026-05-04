@@ -2,7 +2,8 @@
 // OS State Management — React Context + useReducer
 // ============================================================
 
-import React, { createContext, useContext, useReducer, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useEffect, useState } from 'react';
+import { storageGet, storageSet } from '@/lib/storage';
 import type { OSState, OSAction, Window, DesktopIcon, Notification, DockItem, WindowState, UIPreferences } from '@/types';
 import { APP_REGISTRY, getAppById, getDefaultDockApps } from '@/apps/registry';
 
@@ -103,10 +104,6 @@ const createInitialDockItems = (): DockItem[] => {
 };
 
 const loadDesktopIcons = (): DesktopIcon[] => {
-  try {
-    const saved = localStorage.getItem('iplinux_desktop_icons_v5');
-    if (saved) return JSON.parse(saved) as DesktopIcon[];
-  } catch { /* ignore */ }
   return defaultDesktopIcons;
 };
 
@@ -397,20 +394,17 @@ function osReducer(state: OSState, action: OSAction): OSState {
     case 'ADD_DESKTOP_ICON': {
       const icon: DesktopIcon = { ...action.icon, id: generateId() };
       const next = [...state.desktopIcons, icon];
-      localStorage.setItem('iplinux_desktop_icons_v5', JSON.stringify(next));
       return { ...state, desktopIcons: next };
     }
 
     case 'REMOVE_DESKTOP_ICON': {
       const next = state.desktopIcons.filter((i) => i.id !== action.id);
-      localStorage.setItem('iplinux_desktop_icons_v5', JSON.stringify(next));
       return { ...state, desktopIcons: next };
     }
 
     case 'REMOVE_DESKTOP_ICONS': {
       const removeIds = new Set(action.ids);
       const next = state.desktopIcons.filter((i) => !removeIds.has(i.id));
-      localStorage.setItem('iplinux_desktop_icons_v5', JSON.stringify(next));
       return { ...state, desktopIcons: next };
     }
 
@@ -418,7 +412,6 @@ function osReducer(state: OSState, action: OSAction): OSState {
       const next = state.desktopIcons.map((i) =>
         i.id === action.id ? { ...i, position: action.position } : i
       );
-      localStorage.setItem('iplinux_desktop_icons_v5', JSON.stringify(next));
       return { ...state, desktopIcons: next };
     }
 
@@ -426,7 +419,6 @@ function osReducer(state: OSState, action: OSAction): OSState {
       const next = state.desktopIcons.map((i) =>
         action.positions[i.id] ? { ...i, position: action.positions[i.id] } : i
       );
-      localStorage.setItem('iplinux_desktop_icons_v5', JSON.stringify(next));
       return { ...state, desktopIcons: next };
     }
 
@@ -609,8 +601,11 @@ function osReducer(state: OSState, action: OSAction): OSState {
         };
       });
 
-      localStorage.setItem('iplinux_desktop_icons_v5', JSON.stringify(next));
       return { ...state, desktopIcons: next };
+    }
+
+    case 'SET_DESKTOP_ICONS': {
+      return { ...state, desktopIcons: action.icons };
     }
 
     default:
@@ -628,6 +623,23 @@ const OSContext = createContext<OSContextType | null>(null);
 
 export const OSProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(osReducer, initialState);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    storageGet<DesktopIcon[]>('iplinux_desktop_icons_v5').then((saved) => {
+      if (saved) {
+        dispatch({ type: 'SET_DESKTOP_ICONS', icons: saved });
+      }
+      setIsLoaded(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (isLoaded) {
+      storageSet('iplinux_desktop_icons_v5', state.desktopIcons);
+    }
+  }, [state.desktopIcons, isLoaded]);
+
   return (
     <OSContext.Provider value={{ state, dispatch }}>
       {children}

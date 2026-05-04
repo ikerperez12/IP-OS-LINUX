@@ -264,7 +264,8 @@ export type OSAction =
   | { type: 'END_ALT_TAB' }
   | { type: 'CASCADE_WINDOWS' }
   | { type: 'MINIMIZE_ALL' }
-  | { type: 'ARRANGE_DESKTOP_ICONS' };
+  | { type: 'ARRANGE_DESKTOP_ICONS' }
+  | { type: 'SET_DESKTOP_ICONS'; icons: DesktopIcon[] };
 
 // --------------------------------------------------------
 // File Associations

@@ -16,6 +16,8 @@ import NotificationSystem from '@/components/NotificationSystem';
 import NotificationCenter from '@/components/NotificationCenter';
 import AppIcon from '@/components/AppIcon';
 import OpenTasksBar from '@/components/OpenTasksBar';
+import GlobalSearch from '@/components/GlobalSearch';
+import DesktopWidgets from '@/components/Widgets';
 
 function AppShell() {
   const { state, dispatch } = useOS();
@@ -140,6 +142,9 @@ function AppShell() {
             }}
           />
 
+          {/* Desktop Widgets layer */}
+          <DesktopWidgets />
+
           {/* Desktop Icons layer */}
           <Desktop />
 
@@ -158,6 +163,7 @@ function AppShell() {
           <ContextMenu />
           <NotificationSystem />
           <NotificationCenter />
+          <GlobalSearch />
 
           {/* Alt+Tab switcher — with proper Lucide icons */}
           {state.isAltTabbing && (
