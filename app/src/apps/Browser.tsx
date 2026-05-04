@@ -565,6 +565,7 @@ export default function Browser() {
           src={searchUrl}
           className="w-full h-full border-0 bg-white"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          referrerPolicy="strict-origin-when-cross-origin"
           title={activeTab.title}
         />
       );
@@ -622,6 +623,9 @@ export default function Browser() {
         src={activeTab.url}
         className="w-full h-full border-0 bg-white"
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
         title={activeTab.title}
         onError={() => setIframeError(true)}
         onLoad={(e) => {
