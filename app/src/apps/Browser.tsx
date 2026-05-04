@@ -47,6 +47,13 @@ const NEWS_ARTICLES = [
 
 // ---- Simulated pages ----
 const IFRAME_FRIENDLY_SITES = ['example.com', 'wikipedia.org', 'iplinux.com'];
+const KNOWN_BLOCKED_HOSTS = ['youtube.com', 'www.youtube.com', 'google.com', 'www.google.com', 'github.com', 'twitter.com', 'x.com'];
+
+const YOUTUBE_SAMPLE_VIDEOS = [
+  { title: 'YouTube Player Demo', id: 'M7lc1UVf-VE', channel: 'YouTube Developers' },
+  { title: 'Relaxing Focus Stream', id: 'jfKfPfyJRdk', channel: 'Lofi Girl' },
+  { title: 'Creative Commons Video', id: 'aqz-KE-bpKQ', channel: 'Blender Foundation' },
+];
 
 const generateSimulatedPage = (url: string): string => {
   const host = url.replace(/^https?:\/\//, '').split('/')[0];
@@ -116,6 +123,49 @@ const generateSimulatedPage = (url: string): string => {
 // ---- Helpers ----
 const generateId = () => Math.random().toString(36).slice(2);
 
+const getHostname = (url: string): string => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+};
+
+const extractYouTubeVideoId = (input: string): string | null => {
+  try {
+    const parsed = new URL(input.startsWith('http') ? input : `https://${input}`);
+    const host = parsed.hostname.replace(/^www\./, '');
+    if (host === 'youtu.be') return parsed.pathname.split('/').filter(Boolean)[0] || null;
+    if (host === 'youtube.com' || host === 'm.youtube.com') {
+      if (parsed.pathname.startsWith('/embed/')) return parsed.pathname.split('/')[2] || null;
+      if (parsed.pathname.startsWith('/shorts/')) return parsed.pathname.split('/')[2] || null;
+      return parsed.searchParams.get('v');
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
+const isYouTubeUrl = (input: string): boolean => {
+  try {
+    const parsed = new URL(input.startsWith('http') ? input : `https://${input}`);
+    const host = parsed.hostname.replace(/^www\./, '');
+    return host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtu.be';
+  } catch {
+    return false;
+  }
+};
+
+const titleForUrl = (url: string): string => {
+  if (url === 'home') return 'New Tab';
+  if (url === 'youtube://home') return 'YouTube Lite';
+  if (url.startsWith('youtube://search')) return 'YouTube Search';
+  if (url.includes('youtube.com/embed/')) return 'YouTube Video';
+  if (url.startsWith('search://')) return 'Search';
+  return url.replace(/^https?:\/\//, '').split('/')[0];
+};
+
 const normalizeUrl = (input: string): string => {
   const trimmed = input.trim();
   if (trimmed === '') return '';
@@ -128,15 +178,18 @@ const normalizeUrl = (input: string): string => {
     urlStr = `https://${trimmed}`;
   }
 
-  // Handle YouTube iframe restrictions
-  if (urlStr.includes('youtube.com/watch?v=')) {
-    return urlStr.replace('youtube.com/watch?v=', 'youtube.com/embed/');
-  } else if (urlStr.includes('youtu.be/')) {
-    const parts = urlStr.split('youtu.be/');
-    if (parts.length > 1) {
-      const id = parts[1].split('?')[0];
-      return `https://youtube.com/embed/${id}`;
+  if (isYouTubeUrl(urlStr)) {
+    const id = extractYouTubeVideoId(urlStr);
+    if (id) return `https://www.youtube.com/embed/${id}`;
+
+    try {
+      const parsed = new URL(urlStr);
+      const query = parsed.searchParams.get('search_query');
+      if (query) return `youtube://search?query=${encodeURIComponent(query)}`;
+    } catch {
+      // fall through to the local YouTube surface
     }
+    return 'youtube://home';
   }
 
   return urlStr;
@@ -222,6 +275,97 @@ const Homepage = memo(function Homepage({ onNavigate }: { onNavigate: (url: stri
   );
 });
 
+const YouTubeLite = memo(function YouTubeLite({
+  query,
+  onNavigate,
+}: {
+  query?: string;
+  onNavigate: (url: string) => void;
+}) {
+  const [searchQuery, setSearchQuery] = useState(query || '');
+  const youtubeSearchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery || 'ip linux')}`;
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      onNavigate(`youtube://search?query=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  return (
+    <div className="h-full custom-scrollbar overflow-auto" style={{ background: '#0f0f0f', color: '#fff' }}>
+      <div className="px-6 py-7" style={{ background: 'linear-gradient(135deg, #210808, #0f0f0f 62%)' }}>
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: '#FF0000' }}>
+            <Youtube size={28} color="#fff" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">YouTube Lite</h1>
+            <p className="text-xs text-white/60">Video embeds work in-app. Full YouTube pages are protected by YouTube and open externally.</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSearch} className="flex gap-2 max-w-2xl">
+          <div className="flex items-center gap-2 px-4 flex-1 rounded-full" style={{ height: 42, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+            <Search size={17} className="text-white/50" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search YouTube or paste a video URL"
+              className="flex-1 bg-transparent outline-none text-sm placeholder:text-white/40"
+            />
+          </div>
+          <button className="px-5 rounded-full text-sm font-semibold" style={{ background: '#fff', color: '#111' }}>
+            Search
+          </button>
+        </form>
+      </div>
+
+      <div className="p-6 space-y-6">
+        {query && (
+          <div className="rounded-2xl p-4 flex items-center gap-4" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="flex-1">
+              <div className="text-sm font-semibold">Search results for "{query}"</div>
+              <div className="text-xs text-white/55 mt-1">YouTube search pages cannot be embedded directly, but the query is preserved.</div>
+            </div>
+            <button
+              onClick={() => window.open(youtubeSearchUrl, '_blank')}
+              className="px-4 py-2 rounded-full text-xs font-semibold"
+              style={{ background: '#FF0000', color: '#fff' }}
+            >
+              Open Search
+            </button>
+          </div>
+        )}
+
+        <div>
+          <h2 className="text-sm font-semibold mb-3">Embeddable videos</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {YOUTUBE_SAMPLE_VIDEOS.map((video) => (
+              <button
+                key={video.id}
+                onClick={() => onNavigate(`https://www.youtube.com/watch?v=${video.id}`)}
+                className="text-left rounded-2xl overflow-hidden transition-transform hover:scale-[1.02]"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+              >
+                <div className="aspect-video flex items-center justify-center relative" style={{ background: 'linear-gradient(135deg, #281010, #111827)' }}>
+                  <div className="w-14 h-10 rounded-xl flex items-center justify-center" style={{ background: '#FF0000' }}>
+                    <Youtube size={24} color="#fff" />
+                  </div>
+                </div>
+                <div className="p-3">
+                  <div className="text-sm font-semibold leading-tight">{video.title}</div>
+                  <div className="text-xs text-white/50 mt-1">{video.channel}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 // ---- Search Results Page ----
 const SearchResults = memo(function SearchResults({ query, onNavigate }: { query: string; onNavigate: (url: string) => void }) {
   const results = [
@@ -268,6 +412,7 @@ export default function Browser() {
     } catch { return []; }
   });
   const [addressBarValue, setAddressBarValue] = useState('');
+  const [iframeError, setIframeError] = useState(false);
   const showBookmarks = true;
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -285,6 +430,7 @@ export default function Browser() {
     const normalized = normalizeUrl(url);
     if (!normalized) return;
 
+    setIframeError(false);
     updateActiveTab({ loading: true });
 
     setTimeout(() => {
@@ -295,11 +441,11 @@ export default function Browser() {
           if (newHistory[newHistory.length - 1] !== normalized) {
             newHistory.push(normalized);
           }
-          const title = normalized === 'home' ? 'New Tab' : normalized.replace(/^https?:\/\//, '').split('/')[0];
+          const title = titleForUrl(normalized);
           return { ...t, url: normalized, title, history: newHistory, historyIndex: newHistory.length - 1, loading: false };
         })
       );
-      setAddressBarValue(normalized === 'home' ? '' : normalized);
+      setAddressBarValue(normalized === 'home' ? '' : normalized.startsWith('youtube://') ? 'https://youtube.com' : normalized);
     }, 300);
   }, [activeTabId, updateActiveTab]);
 
@@ -360,7 +506,7 @@ export default function Browser() {
   }, [activeTabId, tabs, navigateTo]);
 
   const toggleBookmark = useCallback(() => {
-    if (activeTab.url === 'home' || activeTab.url.startsWith('search://')) return;
+    if (activeTab.url === 'home' || activeTab.url.startsWith('search://') || activeTab.url.startsWith('youtube://')) return;
     setBookmarks((prev) => {
       const exists = prev.find((b) => b.url === activeTab.url);
       if (exists) return prev.filter((b) => b.url !== activeTab.url);
@@ -376,9 +522,6 @@ export default function Browser() {
     e.preventDefault();
     navigateTo(addressBarValue);
   };
-
-  // Render content based on URL
-  const [iframeError, setIframeError] = useState(false);
 
   const renderContent = () => {
     if (activeTab.loading) {
@@ -406,6 +549,13 @@ export default function Browser() {
       return <Homepage onNavigate={navigateTo} />;
     }
 
+    if (activeTab.url.startsWith('youtube://')) {
+      const query = activeTab.url.startsWith('youtube://search')
+        ? new URL(activeTab.url.replace('youtube://search', 'https://youtube.local/search')).searchParams.get('query') || ''
+        : '';
+      return <YouTubeLite query={query} onNavigate={navigateTo} />;
+    }
+
     if (activeTab.url.startsWith('search://')) {
       const query = activeTab.url.replace('search://', '');
       const searchUrl = `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`;
@@ -420,19 +570,30 @@ export default function Browser() {
       );
     }
 
+    const host = getHostname(activeTab.url);
+    const knownBlocked = KNOWN_BLOCKED_HOSTS.includes(host) && !activeTab.url.includes('youtube.com/embed/');
+
     // For real URLs: try direct iframe. Some sites block this, so show fallback.
-    if (iframeError) {
+    if (iframeError || knownBlocked) {
       return (
-        <div className="h-full flex items-center justify-center p-8" style={{ background: 'var(--bg-window)' }}>
-          <div className="flex flex-col items-center gap-4 max-w-md text-center">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(124,77,255,0.1)' }}>
-              <Globe size={32} style={{ color: 'var(--accent-primary)' }} />
+        <div className="h-full flex items-center justify-center p-8" style={{ background: 'linear-gradient(135deg, var(--bg-window), rgba(124,77,255,0.08))' }}>
+          <div
+            className="flex flex-col items-center gap-4 max-w-md text-center rounded-3xl p-7"
+            style={{
+              background: 'rgba(18,20,30,0.72)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              boxShadow: '0 22px 70px rgba(0,0,0,0.34)',
+              backdropFilter: 'blur(22px) saturate(180%)',
+            }}
+          >
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(124,77,255,0.35), rgba(14,165,233,0.2))' }}>
+              {host === 'youtube.com' ? <Youtube size={34} color="#FF0000" /> : <Globe size={32} style={{ color: 'var(--accent-primary)' }} />}
             </div>
             <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)' }}>
-              This site can't be displayed in-app
+              Protected site
             </h2>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              <strong>{activeTab.url.replace(/^https?:\/\//, '').split('/')[0]}</strong> blocks embedded viewing for security. You can open it in your system browser instead.
+              <strong>{activeTab.url.replace(/^https?:\/\//, '').split('/')[0]}</strong> blocks embedded viewing with browser security headers. Video embed URLs still work in-app; full pages should open externally.
             </p>
             <div className="flex gap-3 mt-2">
               <button
@@ -440,7 +601,7 @@ export default function Browser() {
                 className="px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
                 style={{ background: 'var(--accent-primary)' }}
               >
-                Open in System Browser ↗
+                Open externally
               </button>
               <button
                 onClick={() => { setIframeError(false); navigateTo('home'); }}
@@ -606,7 +767,7 @@ export default function Browser() {
         {tabs.map((tab) => (
           <div
             key={tab.id}
-            onClick={() => { setActiveTabId(tab.id); setAddressBarValue(tab.url === 'home' ? '' : tab.url); }}
+            onClick={() => { setActiveTabId(tab.id); setAddressBarValue(tab.url === 'home' ? '' : tab.url.startsWith('youtube://') ? 'https://youtube.com' : tab.url); }}
             className="flex items-center gap-2 px-3 py-1.5 rounded-t-lg cursor-pointer transition-all shrink-0 relative"
             style={{
               maxWidth: 180,
