@@ -6,20 +6,21 @@ const OpenTasksBar = memo(function OpenTasksBar() {
   const { state, dispatch } = useOS();
   const tasks = [...state.windows].sort((a, b) => a.createdAt - b.createdAt);
 
-  if (tasks.length === 0) return null;
+  if (!state.dockPreferences.showTasks || tasks.length === 0) return null;
 
-  const compact = state.uiPreferences.tabletMode || window.innerWidth < 760;
+  const compact = state.dockPreferences.compact || state.uiPreferences.tabletMode || window.innerWidth < 760;
+  const dockOffset = Math.max(70, state.dockPreferences.size + 24);
 
   return (
     <div
       className="fixed left-1/2 z-[145] flex items-center gap-2 overflow-x-auto custom-scrollbar"
       style={{
-        bottom: compact ? 76 : 72,
+        bottom: dockOffset,
         transform: 'translateX(-50%)',
         maxWidth: compact ? 'calc(100vw - 18px)' : 'min(860px, calc(100vw - 64px))',
         padding: compact ? '7px 8px' : '8px 10px',
         borderRadius: 18,
-        background: 'rgba(14, 18, 28, 0.54)',
+        background: `rgba(14, 18, 28, ${Math.min(0.72, state.dockPreferences.transparency + 0.04)})`,
         border: '1px solid rgba(255,255,255,0.11)',
         backdropFilter: `blur(${state.uiPreferences.blurIntensity}px) saturate(190%)`,
         WebkitBackdropFilter: `blur(${state.uiPreferences.blurIntensity}px) saturate(190%)`,
@@ -37,9 +38,9 @@ const OpenTasksBar = memo(function OpenTasksBar() {
             onClick={() => dispatch({ type: 'RESTORE_OR_FOCUS_APP_WINDOW', appId: task.appId })}
             className="group flex items-center gap-2 shrink-0 rounded-xl transition-all"
             style={{
-              minWidth: compact ? 48 : 132,
-              maxWidth: compact ? 54 : 190,
-              height: compact ? 46 : 42,
+              minWidth: compact ? 48 : 148,
+              maxWidth: compact ? 54 : 220,
+              height: compact ? 46 : 46,
               padding: compact ? 4 : '4px 10px 4px 5px',
               background: isFocused
                 ? 'rgba(124,77,255,0.22)'
@@ -51,7 +52,7 @@ const OpenTasksBar = memo(function OpenTasksBar() {
             }}
             title={`${task.title}${isMinimized ? ' (minimized)' : ''}`}
           >
-            <AppIcon appId={task.appId} size={compact ? 38 : 34} />
+            <AppIcon appId={task.appId} size={compact ? 38 : 36} />
             {!compact && (
               <span className="min-w-0 flex-1 text-left">
                 <span className="block truncate text-[11px] font-semibold leading-tight">{app?.name || task.title}</span>

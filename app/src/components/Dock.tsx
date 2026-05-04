@@ -43,25 +43,29 @@ const Dock = memo(function Dock() {
   const pinnedItems = dockItems.filter((d) => d.isPinned);
   const openUnpinned = dockItems.filter((d) => !d.isPinned && d.isOpen);
   const allItems = [...pinnedItems, ...openUnpinned];
-  const iconSize = state.uiPreferences.tabletMode ? 58 : 52;
-  const launcherSize = state.uiPreferences.tabletMode ? 58 : 52;
+  const baseSize = state.dockPreferences.compact
+    ? Math.max(42, state.dockPreferences.size - 8)
+    : state.dockPreferences.size;
+  const iconSize = state.uiPreferences.tabletMode ? Math.max(58, baseSize) : baseSize;
+  const launcherSize = iconSize;
+  const maxScale = Math.max(1, state.dockPreferences.magnification);
 
   // Magnification scale calculation
   const getScale = (index: number) => {
     if (hoveredIndex === null) return 1;
     const distance = Math.abs(index - hoveredIndex);
-    if (distance === 0) return 1.45;
-    if (distance === 1) return 1.2;
-    if (distance === 2) return 1.08;
+    if (distance === 0) return maxScale;
+    if (distance === 1) return 1 + (maxScale - 1) * 0.48;
+    if (distance === 2) return 1 + (maxScale - 1) * 0.18;
     return 1;
   };
 
   const getTranslateY = (index: number) => {
     if (hoveredIndex === null) return 0;
     const distance = Math.abs(index - hoveredIndex);
-    if (distance === 0) return -12;
-    if (distance === 1) return -5;
-    if (distance === 2) return -2;
+    if (distance === 0) return -Math.round(iconSize * 0.24);
+    if (distance === 1) return -Math.round(iconSize * 0.1);
+    if (distance === 2) return -Math.round(iconSize * 0.04);
     return 0;
   };
 
@@ -88,6 +92,7 @@ const Dock = memo(function Dock() {
           transition: isBouncing
             ? 'transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)'
             : 'transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+          width: iconSize + 4,
         }}
       >
         {/* Tooltip */}
@@ -151,12 +156,12 @@ const Dock = memo(function Dock() {
     <div
       className="fixed bottom-2 left-1/2 -translate-x-1/2 z-[150] flex items-end gap-1 px-3 pb-2 pt-2 max-w-[calc(100vw-12px)] overflow-visible"
       style={{
-        background: 'rgba(20, 20, 25, 0.55)',
+        background: `rgba(20, 20, 25, ${state.dockPreferences.transparency})`,
         backdropFilter: `blur(${state.uiPreferences.blurIntensity}px) saturate(220%)`,
         WebkitBackdropFilter: `blur(${state.uiPreferences.blurIntensity}px) saturate(220%)`,
         borderRadius: 20,
         border: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        boxShadow: '0 18px 54px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.1)',
         animation: 'dockSlideUp 400ms cubic-bezier(0, 0, 0.2, 1)',
       }}
       onMouseLeave={() => setHoveredIndex(null)}
@@ -173,10 +178,10 @@ const Dock = memo(function Dock() {
               : 'transparent',
           }}
         >
-          <div
-            className="flex items-center justify-center"
-            style={{
-              width: launcherSize, height: launcherSize,
+            <div
+              className="flex items-center justify-center"
+              style={{
+                width: launcherSize, height: launcherSize,
               borderRadius: 15,
               background: state.appLauncherOpen
                 ? 'linear-gradient(145deg, #7C4DFF, #311B92)'

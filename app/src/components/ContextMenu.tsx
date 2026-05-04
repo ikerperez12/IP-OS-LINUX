@@ -141,15 +141,32 @@ function handleMenuAction(action: string, state: OSState, dispatch: React.Dispat
       });
       break;
     }
-    case 'NEW_FOLDER':
-    case 'NEW_DOCUMENT':
-    case 'OPEN_TERMINAL':
-    case 'CHANGE_BG':
+    case 'NEW_FOLDER': {
+      dispatch({
+        type: 'ADD_DESKTOP_ICON',
+        icon: {
+          name: 'New Folder',
+          icon: 'Folder',
+          kind: 'folder',
+          position: { x: state.contextMenu.x, y: state.contextMenu.y },
+          isSelected: true,
+          children: [],
+          folderAccent: state.theme.accent,
+          folderLayout: 'grid',
+        },
+      });
+      break;
+    }
     case 'ARRANGE_ICONS': {
       dispatch({ type: 'ARRANGE_DESKTOP_ICONS' });
       break;
     }
+    case 'CHANGE_BG':
     case 'SHOW_SETTINGS':
+    case 'NEW_DOCUMENT':
+    case 'OPEN_TERMINAL':
+      dispatch({ type: 'OPEN_WINDOW', appId: 'settings' });
+      break;
     case 'PIN_DOCK':
     case 'UNPIN_DOCK':
     case 'QUIT_APP': {
