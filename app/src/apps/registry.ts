@@ -163,10 +163,10 @@ export const APP_REGISTRY: AppDefinition[] = [
   },
   {
     id: 'passwordmanager',
-    name: 'Password Manager',
+    name: 'Password Demo',
     icon: 'Lock',
     category: 'Productivity',
-    description: 'Secure password storage',
+    description: 'Memory-only credential demo; never store real secrets',
     defaultSize: { width: 520, height: 440 },
     minSize: { width: 360, height: 300 },
   },
