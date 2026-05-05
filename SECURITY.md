@@ -38,8 +38,9 @@ storage and resets on reload. Never persist private clipboard content.
   production via the deploy host's CSP header.)
 * Browser frame embedding restricted to a small allow-list of trusted
   origins (`youtube`, `wikipedia`, `lite.duckduckgo.com`).
-* Cloud Sync and AI Bridge integrations were removed in Round 5 and are
-  never called without user opt-in via VITE_SUPABASE_URL/ANON_KEY.
+* Cloud Sync, AI Bridge, and the unused Supabase client dependency were
+  removed. Reintroduce cloud services only with a backend/edge function that
+  keeps service secrets out of the browser bundle.
 
 ## Things to keep tight when contributing
 

@@ -1,5 +1,7 @@
 # Patch artifacts (legacy)
 .playwright-mcp/
+.vercel/
+app/.vercel/
 app/src/App.tsx.head
 app/src/components/Desktop.tsx.head
 app/src/components/TopPanel.tsx.head
@@ -18,7 +20,10 @@ app/src/types/index.ts.clean
 secrets/
 
 # Build / cache
+node_modules/
+app/node_modules/
 dist/
+app/dist/
 build/
 .coverage/
 *.log
