@@ -90,7 +90,18 @@ const FolderIcon = memo(function FolderIcon({ icon, size }: { icon: DesktopIcon;
 
 const Desktop = memo(function Desktop() {
   const { state, dispatch } = useOS();
-  const { desktopIcons } = state;
+  const disabledAppIds = state.disabledAppIds;
+  const desktopIcons = useMemo(
+    () => state.desktopIcons
+      .map((icon) => icon.kind === 'folder'
+        ? { ...icon, children: (icon.children || []).filter((child) => !child.appId || !disabledAppIds.includes(child.appId)) }
+        : icon)
+      .filter((icon) => {
+        if (icon.kind === 'folder') return (icon.children || []).length > 0;
+        return !icon.appId || !disabledAppIds.includes(icon.appId);
+      }),
+    [disabledAppIds, state.desktopIcons]
+  );
   const desktopRef = useRef<HTMLDivElement>(null);
   const selectionDraftRef = useRef<string>('');
   const dragMovedRef = useRef(false);
@@ -168,7 +179,6 @@ const Desktop = memo(function Desktop() {
       if (e.button !== 0) return;
       if ((e.target as HTMLElement).closest('[data-desktop-icon="true"], [data-folder-panel="true"]')) return;
 
-      desktopRef.current?.focus();
       const start = getLocalPoint(e);
       const additive = e.ctrlKey || e.metaKey || e.shiftKey;
       selectionDraftRef.current = additive ? selectedIds.join('|') : '';
@@ -188,8 +198,6 @@ const Desktop = memo(function Desktop() {
     (e: React.MouseEvent, icon: DesktopIcon) => {
       if (e.button !== 0) return;
       e.stopPropagation();
-      desktopRef.current?.focus();
-
       const additive = e.ctrlKey || e.metaKey || e.shiftKey;
       let nextSelectedIds: string[];
 
@@ -388,7 +396,7 @@ const Desktop = memo(function Desktop() {
       ref={desktopRef}
       className="fixed inset-0 z-10 outline-none overflow-hidden"
       style={{ top: 28, bottom: 76 }}
-      tabIndex={0}
+      tabIndex={-1}
       onMouseDown={handleDesktopMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

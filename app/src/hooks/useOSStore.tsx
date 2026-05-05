@@ -22,14 +22,17 @@ import type {
   UIPreferences,
   DockPreferences,
   SystemControlState,
-  AppCategory,,
-  ClipboardEntry,} from '@/types';
+  AppCategory,
+  ClipboardEntry,
+} from '@/types';
 import { APP_REGISTRY, getAppById, getDefaultDockApps } from '@/apps/registry';
 
 // ---- Helpers ----
 const generateId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 const TOP_PANEL_HEIGHT = 28;
+const DISABLED_APPS_STORAGE_KEY = 'iplinux_disabled_apps_v1';
+const PROTECTED_APP_IDS = new Set(['appstore', 'settings', 'filemanager', 'terminal']);
 
 const isTabletViewport = () => {
   if (typeof window === 'undefined') return false;
@@ -177,6 +180,19 @@ const loadDesktopIcons = (): DesktopIcon[] => {
   return defaultDesktopIcons;
 };
 
+const loadDisabledAppIds = (): string[] => {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(DISABLED_APPS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((id): id is string => typeof id === 'string' && !PROTECTED_APP_IDS.has(id))
+      : [];
+  } catch {
+    return [];
+  }
+};
+
 const desktopMetricsForViewport = (state: OSState) => (
   createDesktopGridMetrics(
     window.innerWidth,
@@ -222,6 +238,7 @@ const initialState: OSState = {
   auth: { isAuthenticated: false, isGuest: false, userName: 'User' },
   windows: [],
   apps: APP_REGISTRY,
+  disabledAppIds: loadDisabledAppIds(),
   desktopIcons: loadDesktopIcons(),
   theme: {
     mode: 'dark',
@@ -289,6 +306,7 @@ function osReducer(state: OSState, action: OSAction): OSState {
     }
 
     case 'OPEN_WINDOW': {
+      if (state.disabledAppIds.includes(action.appId) && !PROTECTED_APP_IDS.has(action.appId)) return state;
       const win = createWindow(state, action.appId, action.title);
       const newWindows = state.windows.map((w) => ({ ...w, isFocused: false }));
       const updatedDock = state.dockItems.map((d) =>
@@ -304,6 +322,7 @@ function osReducer(state: OSState, action: OSAction): OSState {
     }
 
     case 'RESTORE_OR_FOCUS_APP_WINDOW': {
+      if (state.disabledAppIds.includes(action.appId) && !PROTECTED_APP_IDS.has(action.appId)) return state;
       const existing = [...state.windows]
         .reverse()
         .find((w) => w.appId === action.appId);
@@ -348,6 +367,32 @@ function osReducer(state: OSState, action: OSAction): OSState {
           d.appId === action.appId ? { ...d, isOpen: true, isFocused: true } : { ...d, isFocused: false }
         ),
       };
+    }
+
+    case 'SET_DISABLED_APPS': {
+      const next = Array.from(new Set(action.appIds)).filter((id) => !PROTECTED_APP_IDS.has(id));
+      const removedActiveWindow = state.activeWindowId
+        ? state.windows.some((win) => win.id === state.activeWindowId && next.includes(win.appId))
+        : false;
+      return {
+        ...state,
+        disabledAppIds: next,
+        windows: state.windows.filter((win) => !next.includes(win.appId)),
+        activeWindowId: removedActiveWindow ? null : state.activeWindowId,
+        dockItems: state.dockItems.map((item) =>
+          next.includes(item.appId)
+            ? { ...item, isPinned: false, isOpen: false, isFocused: false, bounce: false }
+            : item
+        ),
+      };
+    }
+
+    case 'TOGGLE_APP_INSTALLATION': {
+      if (PROTECTED_APP_IDS.has(action.appId)) return state;
+      const disabled = new Set(state.disabledAppIds);
+      if (disabled.has(action.appId)) disabled.delete(action.appId);
+      else disabled.add(action.appId);
+      return osReducer(state, { type: 'SET_DISABLED_APPS', appIds: Array.from(disabled) });
     }
 
     case 'CLOSE_WINDOW': {
@@ -930,6 +975,15 @@ export const OSProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     if (!isLoaded) return;
     storageSet('iplinux_system_controls_v1', state.systemControls);
   }, [isLoaded, state.systemControls]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    try {
+      localStorage.setItem(DISABLED_APPS_STORAGE_KEY, JSON.stringify(state.disabledAppIds));
+    } catch {
+      // Ignore storage failures in private browsing or restricted contexts.
+    }
+  }, [isLoaded, state.disabledAppIds]);
 
   return (
     <OSContext.Provider value={{ state, dispatch }}>

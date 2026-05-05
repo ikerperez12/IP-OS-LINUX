@@ -6,7 +6,6 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandShortcut,
 } from '@/components/ui/command';
 import { useOS, useWindows } from '@/hooks/useOSStore';
 import { useFileSystem } from '@/hooks/useFileSystem';
@@ -21,6 +20,10 @@ export default function GlobalSearch() {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName || '')) {
+        return;
+      }
       // Toggle on Alt+Space or Cmd/Ctrl+K
       if ((e.key === ' ' && e.altKey) || (e.key === 'k' && (e.metaKey || e.ctrlKey))) {
         e.preventDefault();
@@ -54,7 +57,7 @@ export default function GlobalSearch() {
         <CommandEmpty>No results found.</CommandEmpty>
         
         <CommandGroup heading="Applications">
-          {state.apps.map((app) => (
+          {state.apps.filter((app) => !state.disabledAppIds.includes(app.id)).map((app) => (
             <CommandItem
               key={app.id}
               onSelect={() => handleOpenApp(app.id)}

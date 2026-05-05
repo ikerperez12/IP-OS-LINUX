@@ -70,6 +70,15 @@ export const APP_REGISTRY: AppDefinition[] = [
     minSize: { width: 400, height: 300 },
   },
   {
+    id: 'appstore',
+    name: 'IP Linux Store',
+    icon: 'ShoppingBag',
+    category: 'System',
+    description: 'Install or remove apps for IP Linux',
+    defaultSize: { width: 880, height: 620 },
+    minSize: { width: 600, height: 420 },
+  },
+  {
     id: 'archivemanager',
     name: 'Archive Manager',
     icon: 'Package',

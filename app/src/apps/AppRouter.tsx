@@ -25,6 +25,7 @@ const appComponents: Record<string, ReturnType<typeof lazy<FC>>> = {
   todo: lazy(() => import('./Todo')),
   clock: lazy(() => import('./Clock')),
   spreadsheet: lazy(() => import('./Spreadsheet')),
+  appstore: lazy(() => import('./AppStore')),
   archivemanager: lazy(() => import('./ArchiveManager')),
   browser: lazy(() => import('./Browser')),
   email: lazy(() => import('./Email')),

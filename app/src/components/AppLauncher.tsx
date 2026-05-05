@@ -46,6 +46,7 @@ const AppLauncher = memo(function AppLauncher() {
   );
 
   const filteredApps = apps.filter((app) => {
+    if (state.disabledAppIds.includes(app.id)) return false;
     const matchesSearch = !searchQuery ||
       app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       app.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -57,7 +58,7 @@ const AppLauncher = memo(function AppLauncher() {
   });
 
   const frequentApps = dockItems
-    .filter((d) => d.isPinned)
+    .filter((d) => d.isPinned && !state.disabledAppIds.includes(d.appId))
     .map((d) => getAppById(d.appId))
     .filter(Boolean);
 
@@ -103,11 +104,13 @@ const AppLauncher = memo(function AppLauncher() {
             e.currentTarget.style.borderColor = 'var(--border-default)';
             e.currentTarget.style.boxShadow = 'none';
           }}
+          aria-label="Search applications"
         />
         {searchQuery && (
           <button
             onClick={() => { setSearchQuery(''); inputRef.current?.focus(); }}
             className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
+            aria-label="Clear application search"
           >
             <X size={14} />
           </button>
@@ -125,6 +128,7 @@ const AppLauncher = memo(function AppLauncher() {
                 key={app!.id}
                 onClick={() => handleLaunch(app!.id)}
                 className="flex flex-col items-center gap-1.5 group"
+                aria-label={`Open ${app!.name}`}
               >
                 <div className="group-hover:scale-110 transition-transform">
                   <AppIcon appId={app!.id} size={60} />
@@ -174,6 +178,7 @@ const AppLauncher = memo(function AppLauncher() {
             key={app.id}
             onClick={() => handleLaunch(app.id)}
             className="flex flex-col items-center gap-1.5 p-2 rounded-2xl group transition-all"
+            aria-label={`Open ${app.name}`}
             style={{
               animation: `iconPop 250ms cubic-bezier(0.34, 1.56, 0.64, 1) ${200 + index * 12}ms both`,
             }}

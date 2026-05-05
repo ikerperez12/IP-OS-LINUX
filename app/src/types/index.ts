@@ -254,6 +254,7 @@ export interface OSState {
   auth: AuthState;
   windows: Window[];
   apps: AppDefinition[];
+  disabledAppIds: string[];
   desktopIcons: DesktopIcon[];
   theme: Theme;
   uiPreferences: UIPreferences;
@@ -284,6 +285,8 @@ export type OSAction =
   | { type: 'LOGOUT' }
   | { type: 'OPEN_WINDOW'; appId: string; title?: string }
   | { type: 'RESTORE_OR_FOCUS_APP_WINDOW'; appId: string }
+  | { type: 'SET_DISABLED_APPS'; appIds: string[] }
+  | { type: 'TOGGLE_APP_INSTALLATION'; appId: string }
   | { type: 'CLOSE_WINDOW'; windowId: string }
   | { type: 'MINIMIZE_WINDOW'; windowId: string }
   | { type: 'MAXIMIZE_WINDOW'; windowId: string }

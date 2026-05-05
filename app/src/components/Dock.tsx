@@ -40,8 +40,8 @@ const Dock = memo(function Dock() {
     dispatch({ type: 'OPEN_WINDOW', appId: 'filemanager' });
   }, [dispatch]);
 
-  const pinnedItems = dockItems.filter((d) => d.isPinned);
-  const openUnpinned = dockItems.filter((d) => !d.isPinned && d.isOpen);
+  const pinnedItems = dockItems.filter((d) => d.isPinned && !state.disabledAppIds.includes(d.appId));
+  const openUnpinned = dockItems.filter((d) => !d.isPinned && d.isOpen && !state.disabledAppIds.includes(d.appId));
   const allItems = [...pinnedItems, ...openUnpinned];
   const baseSize = state.dockPreferences.compact
     ? Math.max(42, state.dockPreferences.size - 8)
@@ -116,6 +116,7 @@ const Dock = memo(function Dock() {
         <button
           onClick={() => isTrash ? handleTrashClick() : handleAppClick(appId)}
           className="flex items-center justify-center transition-all ripple-container"
+          aria-label={isTrash ? 'Open Trash' : `Open ${app?.name || appId}`}
           style={{
             borderRadius: 14,
             padding: 2,
@@ -171,6 +172,7 @@ const Dock = memo(function Dock() {
         <button
           onClick={handleShowApps}
           className="flex items-center justify-center transition-all ripple-container"
+          aria-label="Show applications"
           style={{
             borderRadius: 14,
             background: state.appLauncherOpen
