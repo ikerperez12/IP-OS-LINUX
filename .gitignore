@@ -1,1 +1,6 @@
 .playwright-mcp/
+app/src/App.tsx.head
+app/src/components/Desktop.tsx.head
+app/src/components/TopPanel.tsx.head
+app/src/hooks/useOSStore.tsx.clean
+app/src/types/index.ts.clean
