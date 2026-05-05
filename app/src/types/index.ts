@@ -150,11 +150,6 @@ export interface SystemControlState {
   batterySaver: boolean;
 }
 
-export interface IntegrationStatus {
-  supabaseConfigured: boolean;
-  aiConfigured: boolean;
-}
-
 // --------------------------------------------------------
 // Notifications
 // --------------------------------------------------------
@@ -242,7 +237,6 @@ export interface OSState {
   uiPreferences: UIPreferences;
   dockPreferences: DockPreferences;
   systemControls: SystemControlState;
-  integrationStatus: IntegrationStatus;
   notifications: Notification[];
   dockItems: DockItem[];
   contextMenu: ContextMenuState;
@@ -297,7 +291,6 @@ export type OSAction =
   | { type: 'SET_DOCK_PREFERENCES'; preferences: Partial<DockPreferences> }
   | { type: 'SET_SYSTEM_CONTROLS'; controls: Partial<SystemControlState> }
   | { type: 'SET_TABLET_MODE'; tabletMode: boolean }
-  | { type: 'SET_INTEGRATION_STATUS'; status: Partial<IntegrationStatus> }
   | { type: 'TOGGLE_THEME' }
   | { type: 'PIN_DOCK_ITEM'; appId: string }
   | { type: 'UNPIN_DOCK_ITEM'; appId: string }

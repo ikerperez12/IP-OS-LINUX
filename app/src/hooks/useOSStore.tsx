@@ -68,8 +68,6 @@ const defaultSystemControls: SystemControlState = {
   batterySaver: false,
 };
 
-const supabaseConfigured = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
-
 const createWindow = (state: OSState, appId: string, title?: string): Window => {
   const app = getAppById(appId);
   if (!app) throw new Error(`Unknown app: ${appId}`);
@@ -228,10 +226,6 @@ const initialState: OSState = {
   uiPreferences: defaultUIPreferences,
   dockPreferences: defaultDockPreferences,
   systemControls: defaultSystemControls,
-  integrationStatus: {
-    supabaseConfigured,
-    aiConfigured: supabaseConfigured,
-  },
   notifications: [],
   dockItems: createInitialDockItems(),
   contextMenu: {
@@ -664,10 +658,6 @@ function osReducer(state: OSState, action: OSAction): OSState {
 
     case 'SET_TABLET_MODE': {
       return { ...state, uiPreferences: { ...state.uiPreferences, tabletMode: action.tabletMode } };
-    }
-
-    case 'SET_INTEGRATION_STATUS': {
-      return { ...state, integrationStatus: { ...state.integrationStatus, ...action.status } };
     }
 
     case 'TOGGLE_THEME': {
