@@ -1,6 +1,27 @@
+# Patch artifacts (legacy)
 .playwright-mcp/
 app/src/App.tsx.head
 app/src/components/Desktop.tsx.head
 app/src/components/TopPanel.tsx.head
 app/src/hooks/useOSStore.tsx.clean
 app/src/types/index.ts.clean
+
+# Secrets / env
+.env
+.env.*
+!.env.example
+.env.local
+.env.production
+.env.development
+*.pem
+*.key
+secrets/
+
+# Build / cache
+dist/
+build/
+.coverage/
+*.log
+.DS_Store
+.vscode/
+.idea/
