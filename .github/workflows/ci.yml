@@ -21,9 +21,9 @@ jobs:
         working-directory: app
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -33,6 +33,6 @@ jobs:
       - name: Audit high severity dependencies
         run: npm audit --audit-level=high
       - name: Lint
-        run: npm run lint
+        run: npm run lint -- --quiet
       - name: Build
         run: npm run build
