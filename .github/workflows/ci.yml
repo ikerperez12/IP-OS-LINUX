@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   web:
     name: Build and audit web app
@@ -29,5 +32,7 @@ jobs:
         run: npm ci
       - name: Audit high severity dependencies
         run: npm audit --audit-level=high
+      - name: Lint
+        run: npm run lint
       - name: Build
         run: npm run build

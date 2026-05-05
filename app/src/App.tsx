@@ -38,7 +38,8 @@ function AppShell() {
 
   useEffect(() => {
     const syncViewportMode = () => {
-      const tabletMode = window.innerWidth <= 900 || window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+      const touchPrimary = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+      const tabletMode = window.innerWidth <= 900 && touchPrimary;
       dispatch({ type: 'SET_TABLET_MODE', tabletMode });
     };
     syncViewportMode();
