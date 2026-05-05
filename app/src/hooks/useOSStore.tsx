@@ -108,6 +108,7 @@ const createWindow = (state: OSState, appId: string, title?: string): Window => 
     size: shouldMaximize ? { width: vw, height: vh - TOP_PANEL_HEIGHT - 64 } : { width, height },
     state: shouldMaximize ? 'maximized' : 'normal',
     isFocused: true,
+    workspaceId: state.activeWorkspace,
     zIndex: state.nextZIndex,
     icon: app.icon,
     createdAt: Date.now(),

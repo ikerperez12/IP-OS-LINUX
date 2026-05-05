@@ -9,7 +9,10 @@ import AppRouter from '@/apps/AppRouter';
 
 const WindowManager = memo(function WindowManager() {
   const { state } = useOS();
-  const visibleWindows = state.windows.filter((w) => w.state !== 'minimized');
+  const ws = state.activeWorkspace;
+  const visibleWindows = state.windows.filter(
+    (w) => w.state !== 'minimized' && (w.workspaceId ?? 1) === ws
+  );
 
   return (
     <>

@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { format } from 'date-fns';
 import { useOS } from '@/hooks/useOSStore';
 import SystemIcon from './SystemIcon';
+import WorkspaceSwitcher from './WorkspaceSwitcher';
 
 type TrayPanel = 'accessibility' | 'keyboard' | 'network' | 'volume' | 'shortcuts' | 'battery' | 'power' | null;
 
@@ -321,10 +322,11 @@ const TopPanel = memo(function TopPanel() {
         boxShadow: '0 8px 32px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.1)',
       }}
     >
-      <div className="flex-1 flex items-center justify-start min-w-0">
+      <div className="flex-1 flex items-center justify-start min-w-0 gap-2">
         <button onClick={handleActivities} className="h-7 px-3 rounded-lg hover:bg-[rgba(255,255,255,0.08)] transition-colors text-xs font-semibold">
           Activities
         </button>
+        <WorkspaceSwitcher />
       </div>
 
       <div className="flex-1 flex justify-center min-w-0">
