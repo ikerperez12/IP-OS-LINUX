@@ -302,6 +302,14 @@ const Desktop = memo(function Desktop() {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
+      // never react when the keystroke originated from an editable widget
+      const t = e.target as HTMLElement | null;
+      if (t) {
+        if (t.isContentEditable) return;
+        const tag = t.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      }
+
       const selectedIcons = desktopIcons.filter((icon) => icon.isSelected);
 
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {

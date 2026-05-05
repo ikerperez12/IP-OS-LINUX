@@ -48,29 +48,42 @@ function AppShell() {
 
   // Keyboard shortcuts
   useEffect(() => {
+    const isTypingTarget = (target: EventTarget | null): boolean => {
+      const el = target as HTMLElement | null;
+      if (!el) return false;
+      if (el.isContentEditable) return true;
+      const tag = el.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+      const role = el.getAttribute && el.getAttribute('role');
+      if (role === 'textbox' || role === 'searchbox') return true;
+      return false;
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Super key toggles app launcher
-      if (e.key === 'Meta' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      const typing = isTypingTarget(e.target);
+
+      // Super key toggles app launcher (skip when typing in inputs)
+      if (!typing && e.key === 'Meta' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
         e.preventDefault();
         dispatch({ type: 'TOGGLE_APP_LAUNCHER' });
         return;
       }
 
-      // Ctrl+Alt+T opens Terminal
+      // Ctrl+Alt+T opens Terminal — system-level, always allowed
       if (e.ctrlKey && e.altKey && e.key === 't') {
         e.preventDefault();
         dispatch({ type: 'OPEN_WINDOW', appId: 'terminal' });
         return;
       }
 
-      // Super+D minimize all
-      if ((e.metaKey || e.key === 'Meta') && e.key === 'd') {
+      // Super+D minimize all (skip when typing)
+      if (!typing && (e.metaKey || e.key === 'Meta') && e.key === 'd') {
         e.preventDefault();
         dispatch({ type: 'MINIMIZE_ALL' });
         return;
       }
 
-      // Alt+Tab window switching
+      // Alt+Tab window switching — explicit Alt+Tab combo only
       if (e.key === 'Alt') {
         altTabRef.current.holding = true;
       }
@@ -83,7 +96,7 @@ function AppShell() {
         }
       }
 
-      // Escape closes app launcher
+      // Escape closes app launcher / notifications (allowed even while typing)
       if (e.key === 'Escape') {
         if (state.appLauncherOpen) {
           dispatch({ type: 'SET_APP_LAUNCHER', open: false });
@@ -93,8 +106,9 @@ function AppShell() {
         }
       }
 
-      // Ctrl+W closes active window
-      if (e.ctrlKey && e.key === 'w' && state.activeWindowId) {
+      // Ctrl+Shift+W closes active window — moved off plain Ctrl+W so the
+      // shortcut never collides with shell / editor "delete word" input.
+      if (e.ctrlKey && e.shiftKey && (e.key === 'W' || e.key === 'w') && state.activeWindowId) {
         e.preventDefault();
         dispatch({ type: 'CLOSE_WINDOW', windowId: state.activeWindowId });
       }
