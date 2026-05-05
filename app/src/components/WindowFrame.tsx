@@ -76,16 +76,17 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
   const isFocused = win.isFocused;
   const viewportWidth = typeof window === 'undefined' ? win.size.width : window.innerWidth;
   const viewportHeight = typeof window === 'undefined' ? win.size.height + TOP_PANEL_HEIGHT : window.innerHeight;
-  const compactWindow = state.uiPreferences.tabletMode || viewportWidth <= 700;
-  const bottomReserve = compactWindow ? 132 : 96;
-  const maxFrameWidth = Math.max(MIN_W, viewportWidth - (compactWindow ? 0 : 16));
+  const mobileViewport = viewportWidth <= 760;
+  const lockedLayout = isMaximized || mobileViewport;
+  const bottomReserve = mobileViewport ? 132 : 96;
+  const maxFrameWidth = Math.max(MIN_W, viewportWidth - (mobileViewport ? 0 : 16));
   const maxFrameHeight = Math.max(MIN_H, viewportHeight - TOP_PANEL_HEIGHT - bottomReserve);
-  const frameWidth = (isMaximized || compactWindow) ? viewportWidth : Math.min(win.size.width, maxFrameWidth);
-  const frameHeight = (isMaximized || compactWindow) ? maxFrameHeight : Math.min(win.size.height, maxFrameHeight);
-  const frameLeft = (isMaximized || compactWindow)
+  const frameWidth = lockedLayout ? viewportWidth : Math.min(win.size.width, maxFrameWidth);
+  const frameHeight = lockedLayout ? maxFrameHeight : Math.min(win.size.height, maxFrameHeight);
+  const frameLeft = lockedLayout
     ? 0
     : Math.min(Math.max(win.position.x, 8), Math.max(8, viewportWidth - frameWidth - 8));
-  const frameTop = (isMaximized || compactWindow)
+  const frameTop = lockedLayout
     ? TOP_PANEL_HEIGHT
     : Math.min(Math.max(win.position.y, TOP_PANEL_HEIGHT), Math.max(TOP_PANEL_HEIGHT, viewportHeight - frameHeight - bottomReserve));
 
@@ -102,7 +103,7 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
   // ---- Drag ----
   const handleTitleMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      if (isMaximized) return;
+      if (lockedLayout) return;
       // Don't drag if clicking on buttons
       if ((e.target as HTMLElement).closest('.traffic-group')) return;
       e.preventDefault();
@@ -115,42 +116,30 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
       };
       setIsDragging(true);
     },
-    [isMaximized, win.position.x, win.position.y]
+    [lockedLayout, win.position.x, win.position.y]
   );
 
   // ---- Resize ----
-  const getEdge = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    let edge = '';
-    if (y < RESIZE_HANDLE) edge += 'n';
-    if (y > rect.height - RESIZE_HANDLE) edge += 's';
-    if (x < RESIZE_HANDLE) edge += 'w';
-    if (x > rect.width - RESIZE_HANDLE) edge += 'e';
-    return edge;
-  }, []);
-
   const handleResizeMouseDown = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (isMaximized) return;
-      const edge = getEdge(e);
+    (edge: string) => (e: React.MouseEvent<HTMLDivElement>) => {
+      if (lockedLayout) return;
       if (!edge) return;
       e.preventDefault();
       e.stopPropagation();
+      focusThis();
       resizeRef.current = {
         isResizing: true,
         edge,
         startX: e.clientX,
         startY: e.clientY,
-        origW: win.size.width,
-        origH: win.size.height,
-        origX: win.position.x,
-        origY: win.position.y,
+        origW: frameWidth,
+        origH: frameHeight,
+        origX: frameLeft,
+        origY: frameTop,
       };
       setIsResizing(true);
     },
-    [isMaximized, getEdge, win.size, win.position]
+    [lockedLayout, focusThis, frameWidth, frameHeight, frameLeft, frameTop]
   );
 
   // ---- Global mouse events for drag/resize ----
@@ -172,18 +161,28 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
         const { edge, startX, startY, origW, origH, origX, origY } = resizeRef.current;
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
-        let nx = origX, ny = origY, nw = origW, nh = origH;
-        if (edge.includes('e')) nw = Math.max(MIN_W, origW + dx);
-        if (edge.includes('s')) nh = Math.max(MIN_H, origH + dy);
-        if (edge.includes('w')) {
-          nw = Math.max(MIN_W, origW - dx);
-          nx = origX + (origW - nw);
-        }
-        if (edge.includes('n')) {
-          nh = Math.max(MIN_H, origH - dy);
-          ny = origY + (origH - nh);
-          ny = Math.max(TOP_PANEL_HEIGHT, ny);
-        }
+        const viewportW = window.innerWidth;
+        const viewportH = window.innerHeight;
+        const minLeft = 8;
+        const minTop = TOP_PANEL_HEIGHT;
+        const maxRight = Math.max(MIN_W + minLeft, viewportW - 8);
+        const maxBottom = Math.max(MIN_H + minTop, viewportH - bottomReserve);
+        const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+        let left = origX;
+        let top = origY;
+        let right = origX + origW;
+        let bottom = origY + origH;
+
+        if (edge.includes('w')) left = clamp(origX + dx, minLeft, right - MIN_W);
+        if (edge.includes('e')) right = clamp(origX + origW + dx, left + MIN_W, maxRight);
+        if (edge.includes('n')) top = clamp(origY + dy, minTop, bottom - MIN_H);
+        if (edge.includes('s')) bottom = clamp(origY + origH + dy, top + MIN_H, maxBottom);
+
+        const nx = left;
+        const ny = top;
+        const nw = Math.round(right - left);
+        const nh = Math.round(bottom - top);
         dispatch({ type: 'MOVE_WINDOW', windowId: win.id, position: { x: nx, y: ny } });
         dispatch({ type: 'RESIZE_WINDOW', windowId: win.id, size: { width: nw, height: nh } });
       }
@@ -207,7 +206,7 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [dispatch, win.id, win.size.width, win.size.height]);
+  }, [bottomReserve, dispatch, win.id, win.size.width, win.size.height]);
 
   const handleMinimize = useCallback(
     (e: React.MouseEvent) => {
@@ -257,7 +256,7 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
         width: frameWidth,
         height: frameHeight,
         zIndex: win.zIndex,
-        borderRadius: isMaximized ? 0 : 12,
+        borderRadius: lockedLayout ? 0 : 12,
         background: 'rgba(30, 30, 35, 0.85)',
         backdropFilter: 'blur(24px) saturate(180%)',
         WebkitBackdropFilter: 'blur(24px) saturate(180%)',
@@ -294,17 +293,25 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
           }}
         />
       )}
-      {/* Resize handles */}
-      <div className="absolute inset-0 z-50 pointer-events-none">
-        <div onMouseDown={handleResizeMouseDown} style={{ position: 'absolute', top: 0, left: RESIZE_HANDLE, right: RESIZE_HANDLE, height: RESIZE_HANDLE, cursor: 'n-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
-        <div onMouseDown={handleResizeMouseDown} style={{ position: 'absolute', bottom: 0, left: RESIZE_HANDLE, right: RESIZE_HANDLE, height: RESIZE_HANDLE, cursor: 's-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
-        <div onMouseDown={handleResizeMouseDown} style={{ position: 'absolute', left: 0, top: RESIZE_HANDLE, bottom: RESIZE_HANDLE, width: RESIZE_HANDLE, cursor: 'w-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
-        <div onMouseDown={handleResizeMouseDown} style={{ position: 'absolute', right: 0, top: RESIZE_HANDLE, bottom: RESIZE_HANDLE, width: RESIZE_HANDLE, cursor: 'e-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
-        <div onMouseDown={handleResizeMouseDown} style={{ position: 'absolute', top: 0, left: 0, width: RESIZE_HANDLE * 2, height: RESIZE_HANDLE * 2, cursor: 'nw-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
-        <div onMouseDown={handleResizeMouseDown} style={{ position: 'absolute', top: 0, right: 0, width: RESIZE_HANDLE * 2, height: RESIZE_HANDLE * 2, cursor: 'ne-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
-        <div onMouseDown={handleResizeMouseDown} style={{ position: 'absolute', bottom: 0, left: 0, width: RESIZE_HANDLE * 2, height: RESIZE_HANDLE * 2, cursor: 'sw-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
-        <div onMouseDown={handleResizeMouseDown} style={{ position: 'absolute', bottom: 0, right: 0, width: RESIZE_HANDLE * 2, height: RESIZE_HANDLE * 2, cursor: 'se-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
-      </div>
+      {!lockedLayout && (
+        <div aria-hidden="true" className="absolute inset-0 z-50 pointer-events-none">
+          <div onMouseDown={handleResizeMouseDown('n')} style={{ position: 'absolute', top: 0, left: RESIZE_HANDLE * 2, right: RESIZE_HANDLE * 2, height: RESIZE_HANDLE, cursor: 'n-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
+          <div onMouseDown={handleResizeMouseDown('s')} style={{ position: 'absolute', bottom: 0, left: RESIZE_HANDLE * 2, right: RESIZE_HANDLE * 2, height: RESIZE_HANDLE + 4, cursor: 's-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
+          <div onMouseDown={handleResizeMouseDown('w')} style={{ position: 'absolute', left: 0, top: RESIZE_HANDLE * 2, bottom: RESIZE_HANDLE * 2, width: RESIZE_HANDLE, cursor: 'w-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
+          <div onMouseDown={handleResizeMouseDown('e')} style={{ position: 'absolute', right: 0, top: RESIZE_HANDLE * 2, bottom: RESIZE_HANDLE * 2, width: RESIZE_HANDLE, cursor: 'e-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
+          <div onMouseDown={handleResizeMouseDown('nw')} style={{ position: 'absolute', top: 0, left: 0, width: RESIZE_HANDLE * 2, height: RESIZE_HANDLE * 2, cursor: 'nw-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
+          <div onMouseDown={handleResizeMouseDown('ne')} style={{ position: 'absolute', top: 0, right: 0, width: RESIZE_HANDLE * 2, height: RESIZE_HANDLE * 2, cursor: 'ne-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
+          <div onMouseDown={handleResizeMouseDown('sw')} style={{ position: 'absolute', bottom: 0, left: 0, width: RESIZE_HANDLE * 2, height: RESIZE_HANDLE * 2, cursor: 'sw-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
+          <div onMouseDown={handleResizeMouseDown('se')} style={{ position: 'absolute', bottom: 0, right: 0, width: RESIZE_HANDLE * 2.5, height: RESIZE_HANDLE * 2.5, cursor: 'se-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
+          <div
+            className="absolute bottom-1.5 right-1.5 h-3 w-3 rounded-sm opacity-45"
+            style={{
+              background:
+                'linear-gradient(135deg, transparent 0 35%, rgba(255,255,255,0.45) 36% 46%, transparent 47% 60%, rgba(255,255,255,0.32) 61% 72%, transparent 73%)',
+            }}
+          />
+        </div>
+      )}
 
       {/* Title bar */}
       <div
@@ -316,11 +323,11 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
             : 'rgba(20, 20, 25, 0.4)',
           backdropFilter: 'blur(16px) saturate(180%)',
           WebkitBackdropFilter: 'blur(16px) saturate(180%)',
-          borderRadius: isMaximized ? 0 : '12px 12px 0 0',
+          borderRadius: lockedLayout ? 0 : '12px 12px 0 0',
           borderBottom: '1px solid rgba(255,255,255,0.06)',
           boxShadow: isFocused ? 'inset 0 1px 0 rgba(255,255,255,0.08)' : 'none',
           transition: 'background 150ms ease, box-shadow 150ms ease',
-          cursor: isMaximized ? 'default' : 'grab',
+          cursor: lockedLayout ? 'default' : 'grab',
         }}
         onMouseDown={handleTitleMouseDown}
         onDoubleClick={handleDoubleClickTitle}
@@ -380,7 +387,7 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
         className="relative z-10 flex-1 overflow-hidden"
         style={{
           background: 'var(--bg-window)',
-          borderRadius: isMaximized ? 0 : '0 0 12px 12px',
+          borderRadius: lockedLayout ? 0 : '0 0 12px 12px',
         }}
       >
         {children}

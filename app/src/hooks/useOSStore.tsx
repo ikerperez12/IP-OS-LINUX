@@ -36,7 +36,13 @@ const PROTECTED_APP_IDS = new Set(['appstore', 'settings', 'filemanager', 'termi
 
 const isTabletViewport = () => {
   if (typeof window === 'undefined') return false;
-  return window.innerWidth <= 900 || window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+  return window.innerWidth <= 900 && (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0);
+};
+
+const shouldOpenWindowsMaximized = (state: OSState) => {
+  if (typeof window === 'undefined') return false;
+  const vw = window.innerWidth;
+  return vw <= 760 || (state.uiPreferences.tabletMode && vw <= 900);
 };
 
 const prefersReducedMotion = () => {
@@ -83,19 +89,19 @@ const createWindow = (state: OSState, appId: string, title?: string): Window => 
   const id = generateId();
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const shouldMaximize = state.uiPreferences.tabletMode || isTabletViewport();
+  const shouldMaximize = shouldOpenWindowsMaximized(state);
   const categoryRatio: Record<AppCategory, { w: number; h: number }> = {
-    System: { w: 0.68, h: 0.66 },
-    Productivity: { w: 0.72, h: 0.72 },
-    Internet: { w: 0.78, h: 0.76 },
-    Media: { w: 0.72, h: 0.7 },
-    Games: { w: 0.56, h: 0.68 },
-    DevTools: { w: 0.8, h: 0.78 },
-    Creative: { w: 0.76, h: 0.76 },
+    System: { w: 0.72, h: 0.7 },
+    Productivity: { w: 0.78, h: 0.76 },
+    Internet: { w: 0.82, h: 0.78 },
+    Media: { w: 0.76, h: 0.74 },
+    Games: { w: 0.62, h: 0.72 },
+    DevTools: { w: 0.84, h: 0.8 },
+    Creative: { w: 0.8, h: 0.78 },
   };
-  const bottomReserve = 104;
-  const availableW = Math.max(360, vw - 56);
-  const availableH = Math.max(300, vh - TOP_PANEL_HEIGHT - bottomReserve - 24);
+  const bottomReserve = 112;
+  const availableW = Math.max(360, vw - 72);
+  const availableH = Math.max(300, vh - TOP_PANEL_HEIGHT - bottomReserve - 32);
   const ratios = categoryRatio[app.category] || { w: 0.72, h: 0.7 };
   const width = Math.min(availableW, Math.max(app.defaultSize.width, Math.round(availableW * ratios.w)));
   const height = Math.min(availableH, Math.max(app.defaultSize.height, Math.round(availableH * ratios.h)));
