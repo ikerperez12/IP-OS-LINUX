@@ -18,8 +18,53 @@ interface WindowFrameProps {
   children: React.ReactNode;
 }
 
+type SnapZone = 'left' | 'right' | 'top' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | null;
+
+function detectSnapZone(x: number, y: number, vw: number, vh: number): SnapZone {
+  const margin = 18;
+  const top = TOP_PANEL_HEIGHT + 6;
+  const dockReserve = 92;
+  if (y < top + margin) {
+    if (x < vw * 0.18) return 'top-left';
+    if (x > vw * 0.82) return 'top-right';
+    return 'top';
+  }
+  if (y > vh - dockReserve - margin) {
+    if (x < vw * 0.18) return 'bottom-left';
+    if (x > vw * 0.82) return 'bottom-right';
+  }
+  if (x < margin) return 'left';
+  if (x > vw - margin) return 'right';
+  return null;
+}
+
+function commitSnap(
+  zone: Exclude<SnapZone, null>,
+  vw: number,
+  vh: number,
+  win: { id: string },
+  dispatch: (a: { type: string; [k: string]: unknown }) => void
+) {
+  const top = TOP_PANEL_HEIGHT;
+  const dockReserve = 96;
+  const w = vw, hAvail = vh - top - dockReserve;
+  let pos = { x: 0, y: top };
+  let size = { width: w, height: hAvail };
+  switch (zone) {
+    case 'left': size = { width: w / 2, height: hAvail }; break;
+    case 'right': pos = { x: w / 2, y: top }; size = { width: w / 2, height: hAvail }; break;
+    case 'top': size = { width: w, height: hAvail }; break;
+    case 'top-left': size = { width: w / 2, height: hAvail / 2 }; break;
+    case 'top-right': pos = { x: w / 2, y: top }; size = { width: w / 2, height: hAvail / 2 }; break;
+    case 'bottom-left': pos = { x: 0, y: top + hAvail / 2 }; size = { width: w / 2, height: hAvail / 2 }; break;
+    case 'bottom-right': pos = { x: w / 2, y: top + hAvail / 2 }; size = { width: w / 2, height: hAvail / 2 }; break;
+  }
+  dispatch({ type: 'MOVE_WINDOW', windowId: win.id, position: pos });
+  dispatch({ type: 'RESIZE_WINDOW', windowId: win.id, size });
+}
+
 const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowFrameProps) {
-  const { dispatch } = useOS();
+  const { state, dispatch } = useOS();
   const frameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ isDragging: boolean; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const resizeRef = useRef<{ isResizing: boolean; edge: string; startX: number; startY: number; origW: number; origH: number; origX: number; origY: number } | null>(null);
@@ -106,6 +151,8 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
         ny = Math.max(TOP_PANEL_HEIGHT, ny);
         nx = Math.min(Math.max(nx, -(win.size.width - 100)), vw - 100);
         dispatch({ type: 'MOVE_WINDOW', windowId: win.id, position: { x: nx, y: ny } });
+        const zone = detectSnapZone(e.clientX, e.clientY, vw, window.innerHeight);
+        window.dispatchEvent(new CustomEvent('iplinux:snap-zone', { detail: { zone } }));
       }
       if (resizeRef.current?.isResizing) {
         const { edge, startX, startY, origW, origH, origX, origY } = resizeRef.current;
@@ -127,7 +174,14 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
         dispatch({ type: 'RESIZE_WINDOW', windowId: win.id, size: { width: nw, height: nh } });
       }
     };
-    const onUp = () => {
+    const onUp = (e: MouseEvent) => {
+      if (dragRef.current?.isDragging) {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const zone = detectSnapZone(e.clientX, e.clientY, vw, vh);
+        if (zone) commitSnap(zone, vw, vh, win, dispatch as (a: { type: string; [k: string]: unknown }) => void);
+        window.dispatchEvent(new CustomEvent('iplinux:snap-zone', { detail: { zone: null } }));
+      }
       dragRef.current = null;
       resizeRef.current = null;
       setIsDragging(false);
@@ -194,11 +248,38 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
         backdropFilter: 'blur(24px) saturate(180%)',
         WebkitBackdropFilter: 'blur(24px) saturate(180%)',
         border: `1px solid ${isFocused ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'}`,
-        transition: isDragging || isResizing ? 'none' : 'box-shadow 200ms ease, border-color 200ms ease',
+        transition: isDragging || isResizing
+          ? 'none'
+          : (state.uiPreferences.wobblyWindows
+              ? 'transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 200ms ease, border-color 200ms ease'
+              : 'box-shadow 200ms ease, border-color 200ms ease'),
+        transform: isDragging && state.uiPreferences.wobblyWindows ? 'rotate(0.4deg) scale(1.005)' : 'none',
+        boxShadow: state.uiPreferences.dynamicShadows
+          ? (() => {
+              const cx = win.position.x + win.size.width / 2;
+              const cy = win.position.y + win.size.height / 2;
+              const dx = (cx - window.innerWidth / 2) / window.innerWidth;
+              const dy = (cy - window.innerHeight / 2) / window.innerHeight;
+              const ox = Math.round(-dx * 36);
+              const oy = Math.round(-dy * 28 + 24);
+              return `${ox}px ${oy}px ${isFocused ? 60 : 30}px rgba(0,0,0,${isFocused ? 0.55 : 0.32})`;
+            })()
+          : (isFocused ? '0 24px 60px rgba(0,0,0,0.5)' : '0 12px 30px rgba(0,0,0,0.32)'),
         overflow: 'hidden',
       }}
       onMouseDown={handleMouseDown}
     >
+      {state.uiPreferences.edgeSheen && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-0 right-0 top-0 z-40"
+          style={{
+            height: 18,
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0))',
+            mixBlendMode: 'overlay' as const,
+          }}
+        />
+      )}
       {/* Resize handles */}
       <div className="absolute inset-0 z-50 pointer-events-none">
         <div onMouseDown={handleResizeMouseDown} style={{ position: 'absolute', top: 0, left: RESIZE_HANDLE, right: RESIZE_HANDLE, height: RESIZE_HANDLE, cursor: 'n-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />

@@ -18,6 +18,10 @@ import AppIcon from '@/components/AppIcon';
 import GlobalSearch from '@/components/GlobalSearch';
 import DesktopWidgets from '@/components/Widgets';
 import ReactiveWallpaper from '@/components/ReactiveWallpaper';
+import ScreenEffects from '@/components/ScreenEffects';
+import AudioVisualizer from '@/components/AudioVisualizer';
+import ClipboardManager from '@/components/ClipboardManager';
+import SnapAssistOverlay from '@/components/SnapAssistOverlay';
 
 function AppShell() {
   const { state, dispatch } = useOS();
@@ -169,6 +173,14 @@ function AppShell() {
           <NotificationSystem />
           <NotificationCenter />
           <GlobalSearch />
+
+          {/* Round 6 — visual sensorial */}
+          <ScreenEffects />
+          <AudioVisualizer />
+
+          {/* Round 7 — productivity */}
+          <ClipboardManager />
+          <SnapAssistOverlay />
 
           {/* Alt+Tab switcher — with proper Lucide icons */}
           {state.isAltTabbing && (

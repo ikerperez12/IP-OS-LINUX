@@ -3,6 +3,7 @@
 // ============================================================
 
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
+import { audioBus } from '@/lib/audioBus';
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, Volume2, VolumeX, ListMusic, Music
 } from 'lucide-react';
@@ -130,6 +131,11 @@ export default function MusicPlayer() {
 
   const currentTrack = tracks[currentIndex];
 
+  // Publish/clear analyser to global audio bus for visualizers
+  useEffect(() => {
+    return () => { audioBus.publish(null); };
+  }, []);
+
   // Init Audio Context on first play
   const ensureAudio = useCallback(async () => {
     if (!audioCtxRef.current) {
@@ -148,6 +154,7 @@ export default function MusicPlayer() {
       gainRef.current = gain;
       analyserRef.current = analyser;
       setAnalyserNode(analyser);
+      audioBus.publish(analyser);
     }
     if (audioCtxRef.current.state === 'suspended') {
       await audioCtxRef.current.resume();

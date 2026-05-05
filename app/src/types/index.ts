@@ -24,6 +24,7 @@ export interface Window {
   prevPosition?: Position;
   prevSize?: Size;
   isFocused: boolean;
+  workspaceId?: number;
   zIndex: number;
   icon: string;
   createdAt: number;
@@ -123,12 +124,33 @@ export interface Theme {
   animatedWallpaper: AnimatedWallpaperId;
 }
 
+export type ScreenFilter = 'none' | 'night-shift' | 'crt' | 'hdr' | 'sepia' | 'vivid';
+
 export interface UIPreferences {
   reduceMotion: boolean;
   blurIntensity: number;
   wallpaperQuality: 'low' | 'medium' | 'high' | 'ultra';
   iconScale: number;
   tabletMode: boolean;
+  screenFilter: ScreenFilter;
+  acrylicNoise: boolean;
+  wobblyWindows: boolean;
+  audioVisualizer: boolean;
+  dynamicShadows: boolean;
+  edgeSheen: boolean;
+}
+
+export interface ClipboardEntry {
+  id: string;
+  kind: 'text' | 'image' | 'path';
+  preview: string;
+  payload: string;
+  createdAt: number;
+}
+
+export interface Workspace {
+  id: number;
+  name: string;
 }
 
 export interface DockPreferences {
@@ -237,6 +259,10 @@ export interface OSState {
   uiPreferences: UIPreferences;
   dockPreferences: DockPreferences;
   systemControls: SystemControlState;
+  clipboard: ClipboardEntry[];
+  workspaces: Workspace[];
+  activeWorkspace: number;
+  appHandoff: Record<string, unknown>;
   notifications: Notification[];
   dockItems: DockItem[];
   contextMenu: ContextMenuState;
@@ -291,6 +317,14 @@ export type OSAction =
   | { type: 'SET_DOCK_PREFERENCES'; preferences: Partial<DockPreferences> }
   | { type: 'SET_SYSTEM_CONTROLS'; controls: Partial<SystemControlState> }
   | { type: 'SET_TABLET_MODE'; tabletMode: boolean }
+  | { type: 'PUSH_CLIPBOARD'; entry: Omit<ClipboardEntry, 'id' | 'createdAt'> }
+  | { type: 'CLEAR_CLIPBOARD' }
+  | { type: 'REMOVE_CLIPBOARD'; id: string }
+  | { type: 'SET_ACTIVE_WORKSPACE'; id: number }
+  | { type: 'ADD_WORKSPACE' }
+  | { type: 'REMOVE_WORKSPACE'; id: number }
+  | { type: 'MOVE_WINDOW_TO_WORKSPACE'; windowId: string; workspaceId: number }
+  | { type: 'SET_APP_HANDOFF'; appId: string; state: unknown }
   | { type: 'TOGGLE_THEME' }
   | { type: 'PIN_DOCK_ITEM'; appId: string }
   | { type: 'UNPIN_DOCK_ITEM'; appId: string }

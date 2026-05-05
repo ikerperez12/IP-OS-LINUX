@@ -22,8 +22,8 @@ import type {
   UIPreferences,
   DockPreferences,
   SystemControlState,
-  AppCategory,
-} from '@/types';
+  AppCategory,,
+  ClipboardEntry,} from '@/types';
 import { APP_REGISTRY, getAppById, getDefaultDockApps } from '@/apps/registry';
 
 // ---- Helpers ----
@@ -47,6 +47,12 @@ const defaultUIPreferences: UIPreferences = {
   wallpaperQuality: 'high',
   iconScale: 1,
   tabletMode: isTabletViewport(),
+  screenFilter: 'none',
+  acrylicNoise: true,
+  wobblyWindows: true,
+  audioVisualizer: true,
+  dynamicShadows: true,
+  edgeSheen: true,
 };
 
 const defaultDockPreferences: DockPreferences = {
@@ -226,6 +232,19 @@ const initialState: OSState = {
   uiPreferences: defaultUIPreferences,
   dockPreferences: defaultDockPreferences,
   systemControls: defaultSystemControls,
+  clipboard: [],
+  workspaces: [
+    { id: 1, name: 'Workspace 1' },
+    { id: 2, name: 'Workspace 2' },
+    { id: 3, name: 'Workspace 3' },
+  ],
+  activeWorkspace: 1,
+  appHandoff: ((): Record<string, unknown> => {
+    try {
+      const raw = localStorage.getItem('iplinux_app_handoff_v1');
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  })(),
   notifications: [],
   dockItems: createInitialDockItems(),
   contextMenu: {
@@ -658,6 +677,60 @@ function osReducer(state: OSState, action: OSAction): OSState {
 
     case 'SET_TABLET_MODE': {
       return { ...state, uiPreferences: { ...state.uiPreferences, tabletMode: action.tabletMode } };
+    }
+
+    case 'PUSH_CLIPBOARD': {
+      const id = generateId();
+      const next: ClipboardEntry = { id, createdAt: Date.now(), ...action.entry };
+      const filtered = state.clipboard.filter((e) => e.payload !== next.payload);
+      return { ...state, clipboard: [next, ...filtered].slice(0, 10) };
+    }
+
+    case 'CLEAR_CLIPBOARD': {
+      return { ...state, clipboard: [] };
+    }
+
+    case 'REMOVE_CLIPBOARD': {
+      return { ...state, clipboard: state.clipboard.filter((e) => e.id !== action.id) };
+    }
+
+    case 'SET_ACTIVE_WORKSPACE': {
+      return { ...state, activeWorkspace: action.id };
+    }
+
+    case 'ADD_WORKSPACE': {
+      const id = (state.workspaces[state.workspaces.length - 1]?.id || 0) + 1;
+      return { ...state, workspaces: [...state.workspaces, { id, name: `Workspace ${id}` }] };
+    }
+
+    case 'REMOVE_WORKSPACE': {
+      if (state.workspaces.length <= 1) return state;
+      const remaining = state.workspaces.filter((w) => w.id !== action.id);
+      const fallback = remaining[0]?.id || 1;
+      const windows = state.windows.map((w) =>
+        (w.workspaceId || 1) === action.id ? { ...w, workspaceId: fallback } : w
+      );
+      return {
+        ...state,
+        workspaces: remaining,
+        windows,
+        activeWorkspace: state.activeWorkspace === action.id ? fallback : state.activeWorkspace,
+      };
+    }
+
+    case 'MOVE_WINDOW_TO_WORKSPACE': {
+      return {
+        ...state,
+        windows: state.windows.map((w) =>
+          w.id === action.windowId ? { ...w, workspaceId: action.workspaceId } : w
+        ),
+      };
+    }
+
+    case 'SET_APP_HANDOFF': {
+      const next = { ...state.appHandoff, [action.appId]: action.state };
+      try { localStorage.setItem('iplinux_app_handoff_v1', JSON.stringify(next)); } catch {}
+      return { ...state, appHandoff: next };
     }
 
     case 'TOGGLE_THEME': {
