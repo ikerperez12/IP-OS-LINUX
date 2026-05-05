@@ -5,26 +5,66 @@
 import { useCallback, useRef, useState, memo, useEffect } from 'react';
 import type { Window } from '@/types';
 import { useOS } from '@/hooks/useOSStore';
-import * as Icons from 'lucide-react';
-import type { LucideProps } from 'lucide-react';
+import { Columns2, Maximize2, Minus, X } from 'lucide-react';
+import SystemIcon from './SystemIcon';
 
 const TOP_PANEL_HEIGHT = 28;
 const RESIZE_HANDLE = 8;
 const MIN_W = 320;
 const MIN_H = 200;
 
-const DynamicIcon = ({ name, ...props }: { name: string } & LucideProps) => {
-  const IconComp = (Icons as unknown as unknown as Record<string, React.ComponentType<LucideProps>>)[name];
-  return IconComp ? <IconComp {...props} /> : <Icons.HelpCircle {...props} />;
-};
-
 interface WindowFrameProps {
   window: Window;
   children: React.ReactNode;
 }
 
+type SnapZone = 'left' | 'right' | 'top' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | null;
+
+function detectSnapZone(x: number, y: number, vw: number, vh: number): SnapZone {
+  const margin = 18;
+  const top = TOP_PANEL_HEIGHT + 6;
+  const dockReserve = 92;
+  if (y < top + margin) {
+    if (x < vw * 0.18) return 'top-left';
+    if (x > vw * 0.82) return 'top-right';
+    return 'top';
+  }
+  if (y > vh - dockReserve - margin) {
+    if (x < vw * 0.18) return 'bottom-left';
+    if (x > vw * 0.82) return 'bottom-right';
+  }
+  if (x < margin) return 'left';
+  if (x > vw - margin) return 'right';
+  return null;
+}
+
+function commitSnap(
+  zone: Exclude<SnapZone, null>,
+  vw: number,
+  vh: number,
+  win: { id: string },
+  dispatch: (a: { type: string; [k: string]: unknown }) => void
+) {
+  const top = TOP_PANEL_HEIGHT;
+  const dockReserve = 96;
+  const w = vw, hAvail = vh - top - dockReserve;
+  let pos = { x: 0, y: top };
+  let size = { width: w, height: hAvail };
+  switch (zone) {
+    case 'left': size = { width: w / 2, height: hAvail }; break;
+    case 'right': pos = { x: w / 2, y: top }; size = { width: w / 2, height: hAvail }; break;
+    case 'top': size = { width: w, height: hAvail }; break;
+    case 'top-left': size = { width: w / 2, height: hAvail / 2 }; break;
+    case 'top-right': pos = { x: w / 2, y: top }; size = { width: w / 2, height: hAvail / 2 }; break;
+    case 'bottom-left': pos = { x: 0, y: top + hAvail / 2 }; size = { width: w / 2, height: hAvail / 2 }; break;
+    case 'bottom-right': pos = { x: w / 2, y: top + hAvail / 2 }; size = { width: w / 2, height: hAvail / 2 }; break;
+  }
+  dispatch({ type: 'MOVE_WINDOW', windowId: win.id, position: pos });
+  dispatch({ type: 'RESIZE_WINDOW', windowId: win.id, size });
+}
+
 const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowFrameProps) {
-  const { dispatch } = useOS();
+  const { state, dispatch } = useOS();
   const frameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ isDragging: boolean; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const resizeRef = useRef<{ isResizing: boolean; edge: string; startX: number; startY: number; origW: number; origH: number; origX: number; origY: number } | null>(null);
@@ -34,6 +74,20 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
   const isMaximized = win.state === 'maximized';
   const isMinimized = win.state === 'minimized';
   const isFocused = win.isFocused;
+  const viewportWidth = typeof window === 'undefined' ? win.size.width : window.innerWidth;
+  const viewportHeight = typeof window === 'undefined' ? win.size.height + TOP_PANEL_HEIGHT : window.innerHeight;
+  const compactWindow = state.uiPreferences.tabletMode || viewportWidth <= 700;
+  const bottomReserve = compactWindow ? 132 : 96;
+  const maxFrameWidth = Math.max(MIN_W, viewportWidth - (compactWindow ? 0 : 16));
+  const maxFrameHeight = Math.max(MIN_H, viewportHeight - TOP_PANEL_HEIGHT - bottomReserve);
+  const frameWidth = (isMaximized || compactWindow) ? viewportWidth : Math.min(win.size.width, maxFrameWidth);
+  const frameHeight = (isMaximized || compactWindow) ? maxFrameHeight : Math.min(win.size.height, maxFrameHeight);
+  const frameLeft = (isMaximized || compactWindow)
+    ? 0
+    : Math.min(Math.max(win.position.x, 8), Math.max(8, viewportWidth - frameWidth - 8));
+  const frameTop = (isMaximized || compactWindow)
+    ? TOP_PANEL_HEIGHT
+    : Math.min(Math.max(win.position.y, TOP_PANEL_HEIGHT), Math.max(TOP_PANEL_HEIGHT, viewportHeight - frameHeight - bottomReserve));
 
   const focusThis = useCallback(() => {
     if (!win.isFocused && win.state !== 'minimized') {
@@ -111,6 +165,8 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
         ny = Math.max(TOP_PANEL_HEIGHT, ny);
         nx = Math.min(Math.max(nx, -(win.size.width - 100)), vw - 100);
         dispatch({ type: 'MOVE_WINDOW', windowId: win.id, position: { x: nx, y: ny } });
+        const zone = detectSnapZone(e.clientX, e.clientY, vw, window.innerHeight);
+        window.dispatchEvent(new CustomEvent('iplinux:snap-zone', { detail: { zone } }));
       }
       if (resizeRef.current?.isResizing) {
         const { edge, startX, startY, origW, origH, origX, origY } = resizeRef.current;
@@ -132,7 +188,14 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
         dispatch({ type: 'RESIZE_WINDOW', windowId: win.id, size: { width: nw, height: nh } });
       }
     };
-    const onUp = () => {
+    const onUp = (e: MouseEvent) => {
+      if (dragRef.current?.isDragging) {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const zone = detectSnapZone(e.clientX, e.clientY, vw, vh);
+        if (zone) commitSnap(zone, vw, vh, win, dispatch as (a: { type: string; [k: string]: unknown }) => void);
+        window.dispatchEvent(new CustomEvent('iplinux:snap-zone', { detail: { zone: null } }));
+      }
       dragRef.current = null;
       resizeRef.current = null;
       setIsDragging(false);
@@ -189,21 +252,48 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
       ref={frameRef}
       className={`absolute flex flex-col select-none ${isFocused ? 'window-glow-focused' : 'window-glow-unfocused'}`}
       style={{
-        left: win.position.x,
-        top: win.position.y,
-        width: win.size.width,
-        height: win.size.height,
+        left: frameLeft,
+        top: frameTop,
+        width: frameWidth,
+        height: frameHeight,
         zIndex: win.zIndex,
         borderRadius: isMaximized ? 0 : 12,
         background: 'rgba(30, 30, 35, 0.85)',
         backdropFilter: 'blur(24px) saturate(180%)',
         WebkitBackdropFilter: 'blur(24px) saturate(180%)',
         border: `1px solid ${isFocused ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'}`,
-        transition: isDragging || isResizing ? 'none' : 'box-shadow 200ms ease, border-color 200ms ease',
+        transition: isDragging || isResizing
+          ? 'none'
+          : (state.uiPreferences.wobblyWindows
+              ? 'transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 200ms ease, border-color 200ms ease'
+              : 'box-shadow 200ms ease, border-color 200ms ease'),
+        transform: isDragging && state.uiPreferences.wobblyWindows ? 'rotate(0.4deg) scale(1.005)' : 'none',
+        boxShadow: state.uiPreferences.dynamicShadows
+          ? (() => {
+              const cx = win.position.x + win.size.width / 2;
+              const cy = win.position.y + win.size.height / 2;
+              const dx = (cx - window.innerWidth / 2) / window.innerWidth;
+              const dy = (cy - window.innerHeight / 2) / window.innerHeight;
+              const ox = Math.round(-dx * 36);
+              const oy = Math.round(-dy * 28 + 24);
+              return `${ox}px ${oy}px ${isFocused ? 60 : 30}px rgba(0,0,0,${isFocused ? 0.55 : 0.32})`;
+            })()
+          : (isFocused ? '0 24px 60px rgba(0,0,0,0.5)' : '0 12px 30px rgba(0,0,0,0.32)'),
         overflow: 'hidden',
       }}
       onMouseDown={handleMouseDown}
     >
+      {state.uiPreferences.edgeSheen && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-0 right-0 top-0 z-40"
+          style={{
+            height: 18,
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0))',
+            mixBlendMode: 'overlay' as const,
+          }}
+        />
+      )}
       {/* Resize handles */}
       <div className="absolute inset-0 z-50 pointer-events-none">
         <div onMouseDown={handleResizeMouseDown} style={{ position: 'absolute', top: 0, left: RESIZE_HANDLE, right: RESIZE_HANDLE, height: RESIZE_HANDLE, cursor: 'n-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
@@ -241,32 +331,35 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
             onClick={handleClose}
             className={`traffic-btn ${isFocused ? 'traffic-close' : 'traffic-unfocused'}`}
             title="Close"
+            aria-label={`Close ${win.title}`}
           >
-            <Icons.X size={8} strokeWidth={2.5} color="#4D0000" />
+            <X size={8} strokeWidth={2.5} color="#4D0000" />
           </button>
           <button
             onClick={handleMinimize}
             className={`traffic-btn ${isFocused ? 'traffic-minimize' : 'traffic-unfocused'}`}
             title="Minimize"
+            aria-label={`Minimize ${win.title}`}
           >
-            <Icons.Minus size={8} strokeWidth={2.5} color="#995700" />
+            <Minus size={8} strokeWidth={2.5} color="#995700" />
           </button>
           <button
             onClick={handleMaximize}
             className={`traffic-btn ${isFocused ? 'traffic-maximize' : 'traffic-unfocused'}`}
             title={isMaximized ? 'Restore' : 'Maximize'}
+            aria-label={`${isMaximized ? 'Restore' : 'Maximize'} ${win.title}`}
           >
             {isMaximized ? (
-              <Icons.Columns2 size={7} strokeWidth={2.5} color="#006500" />
+              <Columns2 size={7} strokeWidth={2.5} color="#006500" />
             ) : (
-              <Icons.Maximize2 size={7} strokeWidth={2.5} color="#006500" />
+              <Maximize2 size={7} strokeWidth={2.5} color="#006500" />
             )}
           </button>
         </div>
 
         {/* Center: icon + title */}
         <div className="flex-1 flex items-center justify-center gap-2 overflow-hidden px-2">
-          <DynamicIcon name={win.icon} size={14} className="shrink-0" style={{ color: isFocused ? 'var(--text-secondary)' : 'var(--text-disabled)' }} />
+          <SystemIcon appId={win.appId} name={win.icon} size={16} className="shrink-0" style={{ color: isFocused ? 'var(--text-secondary)' : 'var(--text-disabled)' }} />
           <span
             className="text-[12px] font-medium truncate"
             style={{

@@ -8,6 +8,7 @@ import {
   Code2, X, Plus, Search, Save, FolderOpen, FileText,
   ChevronRight, ChevronDown, Folder,
 } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 interface EditorTab {
   id: string;
@@ -413,7 +414,7 @@ export default function CodeEditor() {
                   <div
                     className="absolute inset-0 py-2 px-1 pointer-events-none whitespace-pre"
                     style={{ fontSize: 13, fontFamily: "'JetBrains Mono', monospace", lineHeight: '20px', color: 'var(--text-primary)' }}
-                    dangerouslySetInnerHTML={{ __html: highlightedHtml + '\n' }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(highlightedHtml + '\n', { ADD_ATTR: ['style'] }) }}
                   />
                   {/* Input textarea */}
                   <textarea

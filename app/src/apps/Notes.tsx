@@ -8,6 +8,7 @@ import {
   Underline, List, ListOrdered, Edit2, Check, X,
   Star, Clock,
 } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 interface Note {
   id: string;
@@ -391,7 +392,7 @@ const Notes: React.FC = () => {
               contentEditable
               suppressContentEditableWarning
               onInput={e => updateNote(activeNote.id, { content: e.currentTarget.innerHTML })}
-              dangerouslySetInnerHTML={{ __html: activeNote.content }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(activeNote.content, { ADD_ATTR: ['style'] }) }}
             />
 
             {/* Auto-save indicator */}

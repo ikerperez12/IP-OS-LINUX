@@ -7,6 +7,7 @@ import {
   Copy, BookOpen,
   Replace, Flag, X,
 } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 const FLAG_OPTIONS = [
   { key: 'g', label: 'g', desc: 'Global' },
@@ -279,7 +280,7 @@ export default function RegexTester() {
                   background: 'var(--bg-input)', color: 'var(--text-primary)',
                   border: '1px solid var(--border-default)', fontFamily: "'JetBrains Mono', monospace", fontSize: 13,
                 }}
-                dangerouslySetInnerHTML={{ __html: highlightedText || '<span style="color:var(--text-disabled)">Enter text to test against...</span>' }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(highlightedText || '<span style="color:var(--text-disabled)">Enter text to test against...</span>', { ADD_ATTR: ['style'] }) }}
               />
               <textarea
                 value={testString}

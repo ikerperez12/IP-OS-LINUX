@@ -6,13 +6,7 @@ import { useState, memo, useCallback } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { Bell, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useOS } from '@/hooks/useOSStore';
-import * as Icons from 'lucide-react';
-import type { LucideProps } from 'lucide-react';
-
-const DynamicIcon = ({ name, ...props }: { name: string } & LucideProps) => {
-  const IconComp = (Icons as unknown as Record<string, React.ComponentType<LucideProps>>)[name];
-  return IconComp ? <IconComp {...props} /> : null;
-};
+import SystemIcon from './SystemIcon';
 
 const NotificationCenter = memo(function NotificationCenter() {
   const { state, dispatch } = useOS();
@@ -148,7 +142,7 @@ const NotificationCenter = memo(function NotificationCenter() {
                 }}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <DynamicIcon name={n.appIcon} size={16} className="text-[var(--text-secondary)]" />
+                  <SystemIcon appId={n.appId} name={n.appIcon} size={16} className="text-[var(--text-secondary)]" />
                   <span className="text-[10px] font-semibold text-[var(--text-primary)] flex-1">{n.appName}</span>
                   <span className="text-[10px] text-[var(--text-disabled)]">
                     {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

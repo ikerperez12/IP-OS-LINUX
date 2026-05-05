@@ -8,6 +8,7 @@ import {
   Bold, Italic, Heading, Link, Image, Code, Quote, List,
   ListOrdered, CheckSquare, Minus, Eye, FileCode, Copy, Save, Download, FileUp,
 } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 function markdownToHtml(md: string): string {
   let html = md;
@@ -75,8 +76,10 @@ function markdownToHtml(md: string): string {
     return `<ul style="padding-left:24px;margin:12px 0">${items}</ul>`;
   });
 
-  // Tables
-  html = html.replace(/\|(.+)\|\n\|[-:\|\s]+\|\n((?:\|.+\|\n?)+)/g, (_, header, rows) => {
+  // Tables. Build the regex from strings so Tailwind does not mistake the separator
+  // character class for utility classes during content scanning.
+  const tableRegex = new RegExp('\\|(.+)\\|\\n\\|[-:' + '\\|\\s]+\\|\\n((?:\\|.+\\|\\n?)+)', 'g');
+  html = html.replace(tableRegex, (_, header, rows) => {
     const headers = header.split('|').filter(Boolean).map((h: string) => `<th style="padding:8px 12px;background:var(--bg-titlebar);font-weight:600;font-size:13px;border:1px solid var(--border-default)">${h.trim()}</th>`).join('');
     const bodyRows = rows.trim().split('\n').map((row: string) => {
       const cells = row.split('|').filter(Boolean).map((c: string, i: number) =>
@@ -284,7 +287,7 @@ export default function MarkdownPreview() {
             className="flex-1 overflow-auto p-6 custom-scrollbar"
             style={{ background: 'var(--bg-window)' }}
           >
-            <div dangerouslySetInnerHTML={{ __html: html }} />
+            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html, { ADD_ATTR: ['style', 'target'] }) }} />
           </div>
         </div>
       </div>

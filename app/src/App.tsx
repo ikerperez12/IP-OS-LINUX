@@ -15,13 +15,13 @@ import ContextMenu from '@/components/ContextMenu';
 import NotificationSystem from '@/components/NotificationSystem';
 import NotificationCenter from '@/components/NotificationCenter';
 import AppIcon from '@/components/AppIcon';
-import * as Icons from 'lucide-react';
-import type { LucideProps } from 'lucide-react';
-
-const DynamicIcon = ({ name, ...props }: { name: string } & LucideProps) => {
-  const IconComp = (Icons as unknown as Record<string, React.ComponentType<LucideProps>>)[name];
-  return IconComp ? <IconComp {...props} /> : <Icons.HelpCircle {...props} />;
-};
+import GlobalSearch from '@/components/GlobalSearch';
+import DesktopWidgets from '@/components/Widgets';
+import ReactiveWallpaper from '@/components/ReactiveWallpaper';
+import ScreenEffects from '@/components/ScreenEffects';
+import AudioVisualizer from '@/components/AudioVisualizer';
+import ClipboardManager from '@/components/ClipboardManager';
+import SnapAssistOverlay from '@/components/SnapAssistOverlay';
 
 function AppShell() {
   const { state, dispatch } = useOS();
@@ -36,35 +36,58 @@ function AppShell() {
     }
   }, [bootPhase, dispatch]);
 
+  useEffect(() => {
+    const syncViewportMode = () => {
+      const tabletMode = window.innerWidth <= 900 || window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+      dispatch({ type: 'SET_TABLET_MODE', tabletMode });
+    };
+    syncViewportMode();
+    window.addEventListener('resize', syncViewportMode);
+    return () => window.removeEventListener('resize', syncViewportMode);
+  }, [dispatch]);
+
   const handleBootComplete = useCallback(() => {
     setBootComplete(true);
   }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
+    const isTypingTarget = (target: EventTarget | null): boolean => {
+      const el = target as HTMLElement | null;
+      if (!el) return false;
+      if (el.isContentEditable) return true;
+      const tag = el.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+      const role = el.getAttribute && el.getAttribute('role');
+      if (role === 'textbox' || role === 'searchbox') return true;
+      return false;
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Super key toggles app launcher
-      if (e.key === 'Meta' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      const typing = isTypingTarget(e.target);
+
+      // Super key toggles app launcher (skip when typing in inputs)
+      if (!typing && e.key === 'Meta' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
         e.preventDefault();
         dispatch({ type: 'TOGGLE_APP_LAUNCHER' });
         return;
       }
 
-      // Ctrl+Alt+T opens Terminal
+      // Ctrl+Alt+T opens Terminal — system-level, always allowed
       if (e.ctrlKey && e.altKey && e.key === 't') {
         e.preventDefault();
         dispatch({ type: 'OPEN_WINDOW', appId: 'terminal' });
         return;
       }
 
-      // Super+D minimize all
-      if ((e.metaKey || e.key === 'Meta') && e.key === 'd') {
+      // Super+D minimize all (skip when typing)
+      if (!typing && (e.metaKey || e.key === 'Meta') && e.key === 'd') {
         e.preventDefault();
         dispatch({ type: 'MINIMIZE_ALL' });
         return;
       }
 
-      // Alt+Tab window switching
+      // Alt+Tab window switching — explicit Alt+Tab combo only
       if (e.key === 'Alt') {
         altTabRef.current.holding = true;
       }
@@ -77,7 +100,7 @@ function AppShell() {
         }
       }
 
-      // Escape closes app launcher
+      // Escape closes app launcher / notifications (allowed even while typing)
       if (e.key === 'Escape') {
         if (state.appLauncherOpen) {
           dispatch({ type: 'SET_APP_LAUNCHER', open: false });
@@ -87,8 +110,9 @@ function AppShell() {
         }
       }
 
-      // Ctrl+W closes active window
-      if (e.ctrlKey && e.key === 'w' && state.activeWindowId) {
+      // Ctrl+Shift+W closes active window — moved off plain Ctrl+W so the
+      // shortcut never collides with shell / editor "delete word" input.
+      if (e.ctrlKey && e.shiftKey && (e.key === 'W' || e.key === 'w') && state.activeWindowId) {
         e.preventDefault();
         dispatch({ type: 'CLOSE_WINDOW', windowId: state.activeWindowId });
       }
@@ -125,16 +149,11 @@ function AppShell() {
       {/* Desktop Shell */}
       {showDesktop && (
         <div className="relative w-full h-full" style={{ background: 'var(--bg-desktop)' }}>
-          {/* Wallpaper layer */}
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: `url(${state.theme.wallpaper})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              zIndex: 0,
-            }}
-          />
+          {/* Single wallpaper layer */}
+          <ReactiveWallpaper />
+
+          {/* Desktop Widgets layer */}
+          <DesktopWidgets />
 
           {/* Desktop Icons layer */}
           <Desktop />
@@ -153,6 +172,15 @@ function AppShell() {
           <ContextMenu />
           <NotificationSystem />
           <NotificationCenter />
+          <GlobalSearch />
+
+          {/* Round 6 — visual sensorial */}
+          <ScreenEffects />
+          <AudioVisualizer />
+
+          {/* Round 7 — productivity */}
+          <ClipboardManager />
+          <SnapAssistOverlay />
 
           {/* Alt+Tab switcher — with proper Lucide icons */}
           {state.isAltTabbing && (
@@ -187,7 +215,7 @@ function AppShell() {
                           transform: isSelected ? 'scale(1.05)' : 'scale(1)',
                         }}
                       >
-                        <AppIcon appId={w.appId} size={48} className="drop-shadow-lg" />
+                        <AppIcon appId={w.appId} size={56} className="drop-shadow-lg" />
                         <span
                           className="text-[11px] font-medium tracking-wide truncate w-full text-center mt-2"
                           style={{ color: isSelected ? '#fff' : 'var(--text-secondary)' }}

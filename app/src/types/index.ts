@@ -24,6 +24,7 @@ export interface Window {
   prevPosition?: Position;
   prevSize?: Size;
   isFocused: boolean;
+  workspaceId?: number;
   zIndex: number;
   icon: string;
   createdAt: number;
@@ -47,6 +48,9 @@ export interface AppDefinition {
   defaultSize: Size;
   minSize: Size;
   component?: string;
+  iconStyle?: 'solid' | 'duotone' | 'brand';
+  accent?: string;
+  featuredOnDesktop?: boolean;
 }
 
 // --------------------------------------------------------
@@ -85,10 +89,23 @@ export interface DesktopIcon {
   id: string;
   name: string;
   icon: string;
+  kind?: DesktopItemKind;
   appId?: string;
   fileSystemNodeId?: string;
   position: Position;
   isSelected: boolean;
+  children?: DesktopFolderItem[];
+  folderAccent?: string;
+  folderLayout?: 'grid' | 'compact';
+}
+
+export type DesktopItemKind = 'app' | 'folder';
+
+export interface DesktopFolderItem {
+  id: string;
+  name: string;
+  icon: string;
+  appId?: string;
 }
 
 // --------------------------------------------------------
@@ -96,11 +113,63 @@ export interface DesktopIcon {
 // --------------------------------------------------------
 
 export type ThemeMode = 'dark' | 'light';
+export type WallpaperMode = 'static' | 'animated';
+export type AnimatedWallpaperId = 'aurora' | 'nebula' | 'particles' | 'liquid' | 'grid';
 
 export interface Theme {
   mode: ThemeMode;
   accent: string;
   wallpaper: string;
+  wallpaperMode: WallpaperMode;
+  animatedWallpaper: AnimatedWallpaperId;
+}
+
+export type ScreenFilter = 'none' | 'night-shift' | 'crt' | 'hdr' | 'sepia' | 'vivid';
+
+export interface UIPreferences {
+  reduceMotion: boolean;
+  blurIntensity: number;
+  wallpaperQuality: 'low' | 'medium' | 'high' | 'ultra';
+  iconScale: number;
+  tabletMode: boolean;
+  screenFilter: ScreenFilter;
+  acrylicNoise: boolean;
+  wobblyWindows: boolean;
+  audioVisualizer: boolean;
+  dynamicShadows: boolean;
+  edgeSheen: boolean;
+}
+
+export interface ClipboardEntry {
+  id: string;
+  kind: 'text' | 'image' | 'path';
+  preview: string;
+  payload: string;
+  createdAt: number;
+}
+
+export interface Workspace {
+  id: number;
+  name: string;
+}
+
+export interface DockPreferences {
+  size: number;
+  magnification: number;
+  transparency: number;
+  position: 'bottom';
+  showTasks: boolean;
+  compact: boolean;
+}
+
+export interface SystemControlState {
+  volume: number;
+  muted: boolean;
+  networkEnabled: boolean;
+  bluetoothEnabled: boolean;
+  keyboardLayout: string;
+  highContrast: boolean;
+  batterySaver: boolean;
 }
 
 // --------------------------------------------------------
@@ -185,8 +254,16 @@ export interface OSState {
   auth: AuthState;
   windows: Window[];
   apps: AppDefinition[];
+  disabledAppIds: string[];
   desktopIcons: DesktopIcon[];
   theme: Theme;
+  uiPreferences: UIPreferences;
+  dockPreferences: DockPreferences;
+  systemControls: SystemControlState;
+  clipboard: ClipboardEntry[];
+  workspaces: Workspace[];
+  activeWorkspace: number;
+  appHandoff: Record<string, unknown>;
   notifications: Notification[];
   dockItems: DockItem[];
   contextMenu: ContextMenuState;
@@ -207,6 +284,9 @@ export type OSAction =
   | { type: 'LOGIN'; isGuest: boolean }
   | { type: 'LOGOUT' }
   | { type: 'OPEN_WINDOW'; appId: string; title?: string }
+  | { type: 'RESTORE_OR_FOCUS_APP_WINDOW'; appId: string }
+  | { type: 'SET_DISABLED_APPS'; appIds: string[] }
+  | { type: 'TOGGLE_APP_INSTALLATION'; appId: string }
   | { type: 'CLOSE_WINDOW'; windowId: string }
   | { type: 'MINIMIZE_WINDOW'; windowId: string }
   | { type: 'MAXIMIZE_WINDOW'; windowId: string }
@@ -224,13 +304,35 @@ export type OSAction =
   | { type: 'MARK_NOTIFICATION_READ'; id: string }
   | { type: 'ADD_DESKTOP_ICON'; icon: Omit<DesktopIcon, 'id'> }
   | { type: 'REMOVE_DESKTOP_ICON'; id: string }
+  | { type: 'REMOVE_DESKTOP_ICONS'; ids: string[] }
   | { type: 'UPDATE_DESKTOP_ICON_POSITION'; id: string; position: Position }
+  | { type: 'UPDATE_DESKTOP_ICON_POSITIONS'; positions: Record<string, Position> }
+  | { type: 'MOVE_DESKTOP_ITEMS_TO_CELL'; ids: string[]; anchorPosition: Position }
+  | { type: 'CREATE_DESKTOP_FOLDER'; sourceIds: string[]; targetId?: string; position?: Position; name?: string }
+  | { type: 'MOVE_DESKTOP_ITEM_TO_FOLDER'; sourceId: string; folderId: string }
+  | { type: 'REMOVE_DESKTOP_ITEM_FROM_FOLDER'; folderId: string; childId: string; position?: Position }
   | { type: 'SELECT_DESKTOP_ICON'; id: string | null }
+  | { type: 'SELECT_DESKTOP_ICONS'; ids: string[] }
   | { type: 'SET_THEME'; theme: Partial<Theme> }
+  | { type: 'SET_UI_PREFERENCES'; preferences: Partial<UIPreferences> }
+  | { type: 'SET_WALLPAPER_MODE'; mode: WallpaperMode }
+  | { type: 'SET_ANIMATED_WALLPAPER'; wallpaper: AnimatedWallpaperId }
+  | { type: 'SET_DOCK_PREFERENCES'; preferences: Partial<DockPreferences> }
+  | { type: 'SET_SYSTEM_CONTROLS'; controls: Partial<SystemControlState> }
+  | { type: 'SET_TABLET_MODE'; tabletMode: boolean }
+  | { type: 'PUSH_CLIPBOARD'; entry: Omit<ClipboardEntry, 'id' | 'createdAt'> }
+  | { type: 'CLEAR_CLIPBOARD' }
+  | { type: 'REMOVE_CLIPBOARD'; id: string }
+  | { type: 'SET_ACTIVE_WORKSPACE'; id: number }
+  | { type: 'ADD_WORKSPACE' }
+  | { type: 'REMOVE_WORKSPACE'; id: number }
+  | { type: 'MOVE_WINDOW_TO_WORKSPACE'; windowId: string; workspaceId: number }
+  | { type: 'SET_APP_HANDOFF'; appId: string; state: unknown }
   | { type: 'TOGGLE_THEME' }
   | { type: 'PIN_DOCK_ITEM'; appId: string }
   | { type: 'UNPIN_DOCK_ITEM'; appId: string }
   | { type: 'BOUNCE_DOCK_ITEM'; appId: string }
+  | { type: 'CLEAR_DOCK_BOUNCE'; appId?: string }
   | { type: 'SHOW_CONTEXT_MENU'; x: number; y: number; menuType: ContextMenuType; items: ContextMenuItem[]; contextData?: Record<string, unknown> }
   | { type: 'HIDE_CONTEXT_MENU' }
   | { type: 'START_ALT_TAB' }
@@ -238,7 +340,8 @@ export type OSAction =
   | { type: 'END_ALT_TAB' }
   | { type: 'CASCADE_WINDOWS' }
   | { type: 'MINIMIZE_ALL' }
-  | { type: 'ARRANGE_DESKTOP_ICONS' };
+  | { type: 'ARRANGE_DESKTOP_ICONS' }
+  | { type: 'SET_DESKTOP_ICONS'; icons: DesktopIcon[] };
 
 // --------------------------------------------------------
 // File Associations

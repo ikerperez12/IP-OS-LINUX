@@ -1,5 +1,5 @@
 // ============================================================
-// App Registry — All 54 Apps
+// App Registry - All 55 Apps
 // ============================================================
 
 import type { AppDefinition } from '@/types';
@@ -68,6 +68,15 @@ export const APP_REGISTRY: AppDefinition[] = [
     description: 'CPU, memory, disk, and network monitoring',
     defaultSize: { width: 680, height: 480 },
     minSize: { width: 400, height: 300 },
+  },
+  {
+    id: 'appstore',
+    name: 'IP Linux Store',
+    icon: 'ShoppingBag',
+    category: 'System',
+    description: 'Install or remove apps for IP Linux',
+    defaultSize: { width: 880, height: 620 },
+    minSize: { width: 600, height: 420 },
   },
   {
     id: 'archivemanager',
@@ -154,10 +163,10 @@ export const APP_REGISTRY: AppDefinition[] = [
   },
   {
     id: 'passwordmanager',
-    name: 'Password Manager',
+    name: 'Password Demo',
     icon: 'Lock',
     category: 'Productivity',
-    description: 'Secure password storage',
+    description: 'Memory-only credential demo; never store real secrets',
     defaultSize: { width: 520, height: 440 },
     minSize: { width: 360, height: 300 },
   },
@@ -476,7 +485,7 @@ export const APP_REGISTRY: AppDefinition[] = [
     minSize: { width: 400, height: 320 },
   },
 
-  // ======== CREATIVE (4) ========
+  // ======== CREATIVE (5) ========
   {
     id: 'drawing',
     name: 'Drawing',
@@ -513,6 +522,17 @@ export const APP_REGISTRY: AppDefinition[] = [
     defaultSize: { width: 640, height: 480 },
     minSize: { width: 400, height: 320 },
   },
+  {
+    id: 'matrixrain',
+    name: 'Matrix Rain',
+    icon: 'Droplets',
+    category: 'Creative',
+    description: 'Interactive cinematic code rain visualizer',
+    defaultSize: { width: 760, height: 520 },
+    minSize: { width: 420, height: 320 },
+    accent: '#22C55E',
+    featuredOnDesktop: true,
+  },
 ];
 
 export const getAppById = (id: string): AppDefinition | undefined =>
@@ -526,5 +546,7 @@ export const getDefaultDockApps = (): string[] => [
   'terminal',
   'texteditor',
   'browser',
+  'musicplayer',
+  'matrixrain',
   'settings',
 ];

@@ -7,6 +7,7 @@ import {
   Bold, Italic, Paintbrush, Download, Plus,
   Trash2, FileSpreadsheet,
 } from 'lucide-react';
+import { evaluateMathExpression } from '@/lib/safeMath';
 
 const COLS = Array.from({ length: 20 }, (_, i) => {
   let s = '';
@@ -118,8 +119,7 @@ const Spreadsheet: React.FC = () => {
         const num = parseFloat(val);
         return isNaN(num) ? '0' : String(num);
       });
-      // eslint-disable-next-line no-eval
-      const result = eval(expr);
+      const result = evaluateMathExpression(expr);
       return String(Number(result.toFixed(4)));
     } catch {
       return '#VALUE!';

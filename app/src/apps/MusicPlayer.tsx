@@ -3,6 +3,7 @@
 // ============================================================
 
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
+import { audioBus } from '@/lib/audioBus';
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, Volume2, VolumeX, ListMusic, Music
 } from 'lucide-react';
@@ -46,9 +47,21 @@ const VisualizerBars = memo(function VisualizerBars({ isPlaying, analyser }: { i
   const [bars, setBars] = useState<number[]>(Array(32).fill(4));
 
   useEffect(() => {
-    if (!isPlaying || !analyser) {
+    if (!isPlaying) {
       if (!isPlaying) setBars(Array(32).fill(4));
       return;
+    }
+
+    if (!analyser) {
+      let animId: number;
+      let tick = 0;
+      const updateFallback = () => {
+        tick += 0.18;
+        setBars(Array.from({ length: 32 }, (_, i) => 8 + Math.abs(Math.sin(tick + i * 0.42)) * 28));
+        animId = requestAnimationFrame(updateFallback);
+      };
+      updateFallback();
+      return () => cancelAnimationFrame(animId);
     }
 
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
@@ -104,11 +117,13 @@ export default function MusicPlayer() {
   const [isShuffle, setIsShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'off' | 'one' | 'all'>('off');
   const [showPlaylist, setShowPlaylist] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const gainRef = useRef<GainNode | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const oscillatorRef = useRef<OscillatorNode | null>(null);
+  const voiceGainRef = useRef<GainNode | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const noteIndexRef = useRef(0);
   const noteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -116,10 +131,19 @@ export default function MusicPlayer() {
 
   const currentTrack = tracks[currentIndex];
 
+  // Publish/clear analyser to global audio bus for visualizers
+  useEffect(() => {
+    return () => { audioBus.publish(null); };
+  }, []);
+
   // Init Audio Context on first play
-  const ensureAudio = useCallback(() => {
+  const ensureAudio = useCallback(async () => {
     if (!audioCtxRef.current) {
-      const ctx = new AudioContext();
+      const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextCtor) {
+        throw new Error('Web Audio API is not available in this browser.');
+      }
+      const ctx = new AudioContextCtor();
       const gain = ctx.createGain();
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
@@ -130,13 +154,19 @@ export default function MusicPlayer() {
       gainRef.current = gain;
       analyserRef.current = analyser;
       setAnalyserNode(analyser);
+      audioBus.publish(analyser);
+    }
+    if (audioCtxRef.current.state === 'suspended') {
+      await audioCtxRef.current.resume();
     }
     return audioCtxRef.current!;
   }, [volume]);
 
   // Start synth playback
-  const startSynth = useCallback((track: Track) => {
-    const ctx = ensureAudio();
+  const startSynth = useCallback(async (track: Track) => {
+    try {
+      setAudioError(null);
+      const ctx = await ensureAudio();
     // Stop previous oscillator
     if (oscillatorRef.current) {
       try { oscillatorRef.current.stop(); } catch { /* ok */ }
@@ -146,13 +176,17 @@ export default function MusicPlayer() {
     const gain = gainRef.current!;
     gain.gain.value = volume;
 
-    // Create oscillator
     const osc = ctx.createOscillator();
+      const voiceGain = ctx.createGain();
     osc.type = track.type;
     osc.frequency.value = track.freq;
-    osc.connect(gain);
+      voiceGain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      voiceGain.gain.exponentialRampToValueAtTime(0.92, ctx.currentTime + 0.045);
+      osc.connect(voiceGain);
+      voiceGain.connect(gain);
     osc.start();
     oscillatorRef.current = osc;
+      voiceGainRef.current = voiceGain;
     noteIndexRef.current = 0;
 
     // Play pattern
@@ -163,13 +197,29 @@ export default function MusicPlayer() {
       osc.frequency.setTargetAtTime(freq, ctx.currentTime, 0.05);
       noteIndexRef.current++;
     }, noteDuration);
+    } catch (error) {
+      setIsPlaying(false);
+      setAudioError(error instanceof Error ? error.message : 'Audio playback failed.');
+    }
   }, [ensureAudio, volume]);
 
   // Stop synth
   const stopSynth = useCallback(() => {
+    const ctx = audioCtxRef.current;
+    const voiceGain = voiceGainRef.current;
     if (oscillatorRef.current) {
-      try { oscillatorRef.current.stop(); } catch { /* ok */ }
+      try {
+        if (ctx && voiceGain && ctx.state !== 'closed') {
+          const now = ctx.currentTime;
+          voiceGain.gain.cancelScheduledValues(now);
+          voiceGain.gain.setTargetAtTime(0.0001, now, 0.025);
+          oscillatorRef.current.stop(now + 0.09);
+        } else {
+          oscillatorRef.current.stop();
+        }
+      } catch { /* ok */ }
       oscillatorRef.current = null;
+      voiceGainRef.current = null;
     }
     if (noteTimerRef.current) {
       clearInterval(noteTimerRef.current);
@@ -208,7 +258,7 @@ export default function MusicPlayer() {
       stopSynth();
       setIsPlaying(false);
     } else {
-      startSynth(currentTrack);
+      void startSynth(currentTrack);
       setIsPlaying(true);
     }
   }, [isPlaying, stopSynth, startSynth, currentTrack]);
@@ -221,20 +271,20 @@ export default function MusicPlayer() {
     setCurrentIndex(nextIndex);
     setCurrentTime(0);
     setIsPlaying(true);
-    setTimeout(() => startSynth(tracks[nextIndex]), 50);
+    void startSynth(tracks[nextIndex]);
   }, [isShuffle, tracks, currentIndex, stopSynth, startSynth]);
 
   const handlePrev = useCallback(() => {
     stopSynth();
     if (currentTime > 3) {
       setCurrentTime(0);
-      setTimeout(() => startSynth(currentTrack), 50);
+      void startSynth(currentTrack);
     } else {
       const prevIndex = (currentIndex - 1 + tracks.length) % tracks.length;
       setCurrentIndex(prevIndex);
       setCurrentTime(0);
       setIsPlaying(true);
-      setTimeout(() => startSynth(tracks[prevIndex]), 50);
+      void startSynth(tracks[prevIndex]);
     }
   }, [currentTime, currentIndex, tracks, currentTrack, stopSynth, startSynth]);
 
@@ -255,7 +305,7 @@ export default function MusicPlayer() {
     setCurrentIndex(i);
     setCurrentTime(0);
     setIsPlaying(true);
-    setTimeout(() => startSynth(tracks[i]), 50);
+    void startSynth(tracks[i]);
   }, [stopSynth, startSynth, tracks]);
 
   // Cleanup on unmount
@@ -310,6 +360,11 @@ export default function MusicPlayer() {
       {/* Visualizer */}
       <div className="px-6 mb-2">
         <VisualizerBars isPlaying={isPlaying} analyser={analyserNode} />
+        {audioError && (
+          <p className="mt-1 text-center text-[10px]" style={{ color: 'var(--accent-warning)' }}>
+            {audioError}
+          </p>
+        )}
       </div>
 
       {/* Progress Bar */}

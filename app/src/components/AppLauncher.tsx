@@ -46,6 +46,7 @@ const AppLauncher = memo(function AppLauncher() {
   );
 
   const filteredApps = apps.filter((app) => {
+    if (state.disabledAppIds.includes(app.id)) return false;
     const matchesSearch = !searchQuery ||
       app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       app.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -57,7 +58,7 @@ const AppLauncher = memo(function AppLauncher() {
   });
 
   const frequentApps = dockItems
-    .filter((d) => d.isPinned)
+    .filter((d) => d.isPinned && !state.disabledAppIds.includes(d.appId))
     .map((d) => getAppById(d.appId))
     .filter(Boolean);
 
@@ -68,8 +69,8 @@ const AppLauncher = memo(function AppLauncher() {
       className="fixed inset-0 z-[3000] flex flex-col items-center"
       style={{
         background: 'var(--bg-app-grid)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
+        backdropFilter: `blur(${state.uiPreferences.blurIntensity}px)`,
+        WebkitBackdropFilter: `blur(${state.uiPreferences.blurIntensity}px)`,
         animation: 'launcherFade 300ms ease',
         paddingTop: 32,
       }}
@@ -103,11 +104,13 @@ const AppLauncher = memo(function AppLauncher() {
             e.currentTarget.style.borderColor = 'var(--border-default)';
             e.currentTarget.style.boxShadow = 'none';
           }}
+          aria-label="Search applications"
         />
         {searchQuery && (
           <button
             onClick={() => { setSearchQuery(''); inputRef.current?.focus(); }}
             className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
+            aria-label="Clear application search"
           >
             <X size={14} />
           </button>
@@ -125,9 +128,10 @@ const AppLauncher = memo(function AppLauncher() {
                 key={app!.id}
                 onClick={() => handleLaunch(app!.id)}
                 className="flex flex-col items-center gap-1.5 group"
+                aria-label={`Open ${app!.name}`}
               >
                 <div className="group-hover:scale-110 transition-transform">
-                  <AppIcon appId={app!.id} size={52} />
+                  <AppIcon appId={app!.id} size={60} />
                 </div>
                 <span className="text-[10px] text-[var(--text-primary)] text-center truncate max-w-[64px]">{app!.name}</span>
               </button>
@@ -164,8 +168,8 @@ const AppLauncher = memo(function AppLauncher() {
         style={{
           maxHeight: 'calc(100vh - 220px)',
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(88px, 1fr))',
-          gap: 12,
+          gridTemplateColumns: `repeat(auto-fill, minmax(${state.uiPreferences.tabletMode ? 112 : 98}px, 1fr))`,
+          gap: state.uiPreferences.tabletMode ? 16 : 12,
           animation: 'gridAppear 300ms cubic-bezier(0.34, 1.56, 0.64, 1) 200ms both',
         }}
       >
@@ -174,6 +178,7 @@ const AppLauncher = memo(function AppLauncher() {
             key={app.id}
             onClick={() => handleLaunch(app.id)}
             className="flex flex-col items-center gap-1.5 p-2 rounded-2xl group transition-all"
+            aria-label={`Open ${app.name}`}
             style={{
               animation: `iconPop 250ms cubic-bezier(0.34, 1.56, 0.64, 1) ${200 + index * 12}ms both`,
             }}
@@ -185,9 +190,9 @@ const AppLauncher = memo(function AppLauncher() {
             }}
           >
             <div className="group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-200">
-              <AppIcon appId={app.id} size={56} />
+              <AppIcon appId={app.id} size={state.uiPreferences.tabletMode ? 70 : 64} />
             </div>
-            <span className="text-[10px] text-[var(--text-primary)] text-center truncate max-w-[80px] font-medium leading-tight">
+            <span className="text-[10px] text-[var(--text-primary)] text-center truncate max-w-[92px] font-medium leading-tight">
               {app.name}
             </span>
           </button>

@@ -4,18 +4,13 @@
 
 import { useEffect, useState, memo } from 'react';
 import { X } from 'lucide-react';
-import * as Icons from 'lucide-react';
-import type { LucideProps } from 'lucide-react';
 import { useOS } from '@/hooks/useOSStore';
-
-const DynamicIcon = ({ name, ...props }: { name: string } & LucideProps) => {
-  const IconComp = (Icons as unknown as Record<string, React.ComponentType<LucideProps>>)[name];
-  return IconComp ? <IconComp {...props} /> : null;
-};
+import SystemIcon from './SystemIcon';
 
 interface ToastProps {
   notification: {
     id: string;
+    appId: string;
     appName: string;
     appIcon: string;
     title: string;
@@ -68,7 +63,7 @@ const Toast = memo(function Toast({ notification, onClose, index }: ToastProps) 
     >
       {/* Top row: app icon + name + time + close */}
       <div className="flex items-center gap-2">
-        <DynamicIcon name={notification.appIcon} size={18} className="text-[var(--text-secondary)] shrink-0" />
+        <SystemIcon appId={notification.appId} name={notification.appIcon} size={18} className="text-[var(--text-secondary)] shrink-0" />
         <span className="text-[10px] font-semibold text-[var(--text-primary)] flex-1 truncate">{notification.appName}</span>
         <span className="text-[10px] text-[var(--text-disabled)] shrink-0">
           {new Date(notification.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
