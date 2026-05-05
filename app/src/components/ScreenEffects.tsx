@@ -2,7 +2,7 @@
 // ScreenEffects - global post-process layer (filters + grain)
 // ============================================================
 
-import { memo } from 'react';
+import { memo, useEffect } from 'react';
 import { useOS } from '@/hooks/useOSStore';
 
 const NOISE_SVG =
@@ -18,13 +18,11 @@ const ScreenEffects = memo(function ScreenEffects() {
   const reduce = state.uiPreferences.reduceMotion;
 
   let filter = '';
-  let mixBlend: string | undefined;
   let scanlines = false;
 
   switch (f) {
     case 'night-shift':
       filter = 'sepia(0.18) hue-rotate(-12deg) saturate(0.92)';
-      mixBlend = undefined;
       break;
     case 'crt':
       filter = 'contrast(1.05) saturate(1.15)';
@@ -49,7 +47,7 @@ const ScreenEffects = memo(function ScreenEffects() {
     <>
       <style>{`
         :root { --screen-filter: ${filter || 'none'}; }
-        body { transition: filter 220ms ease; }
+        body { transition: ${reduce ? 'none' : 'filter 220ms ease'}; }
         body.with-screen-filter { filter: var(--screen-filter); }
       `}</style>
       <FilterBinder enabled={!!filter} />
@@ -78,7 +76,6 @@ const ScreenEffects = memo(function ScreenEffects() {
           }}
         />
       )}
-      {mixBlend ? null : null}
       <style>{`
         @keyframes grainShift {
           0% { transform: translate(0,0); }
@@ -93,9 +90,10 @@ const ScreenEffects = memo(function ScreenEffects() {
 });
 
 const FilterBinder = memo(function FilterBinder({ enabled }: { enabled: boolean }) {
-  if (typeof document !== 'undefined') {
+  useEffect(() => {
     document.body.classList.toggle('with-screen-filter', enabled);
-  }
+    return () => document.body.classList.remove('with-screen-filter');
+  }, [enabled]);
   return null;
 });
 

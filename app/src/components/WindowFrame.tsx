@@ -317,6 +317,7 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
             onClick={handleClose}
             className={`traffic-btn ${isFocused ? 'traffic-close' : 'traffic-unfocused'}`}
             title="Close"
+            aria-label={`Close ${win.title}`}
           >
             <X size={8} strokeWidth={2.5} color="#4D0000" />
           </button>
@@ -324,6 +325,7 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
             onClick={handleMinimize}
             className={`traffic-btn ${isFocused ? 'traffic-minimize' : 'traffic-unfocused'}`}
             title="Minimize"
+            aria-label={`Minimize ${win.title}`}
           >
             <Minus size={8} strokeWidth={2.5} color="#995700" />
           </button>
@@ -331,6 +333,7 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
             onClick={handleMaximize}
             className={`traffic-btn ${isFocused ? 'traffic-maximize' : 'traffic-unfocused'}`}
             title={isMaximized ? 'Restore' : 'Maximize'}
+            aria-label={`${isMaximized ? 'Restore' : 'Maximize'} ${win.title}`}
           >
             {isMaximized ? (
               <Columns2 size={7} strokeWidth={2.5} color="#006500" />

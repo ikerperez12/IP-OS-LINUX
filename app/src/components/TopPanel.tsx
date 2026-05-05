@@ -323,14 +323,14 @@ const TopPanel = memo(function TopPanel() {
       }}
     >
       <div className="flex-1 flex items-center justify-start min-w-0 gap-2">
-        <button onClick={handleActivities} className="h-7 px-3 rounded-lg hover:bg-[rgba(255,255,255,0.08)] transition-colors text-xs font-semibold">
+        <button onClick={handleActivities} className="h-7 px-3 rounded-lg hover:bg-[rgba(255,255,255,0.08)] transition-colors text-xs font-semibold" aria-label="Open activities and applications">
           Activities
         </button>
         <WorkspaceSwitcher />
       </div>
 
       <div className="flex-1 flex justify-center min-w-0">
-        <button onClick={handleClockClick} className="h-7 px-3 rounded-lg hover:bg-[rgba(255,255,255,0.08)] transition-colors text-xs font-semibold group relative flex items-center justify-center">
+        <button onClick={handleClockClick} className="h-7 px-3 rounded-lg hover:bg-[rgba(255,255,255,0.08)] transition-colors text-xs font-semibold group relative flex items-center justify-center" aria-label={`Open calendar and notifications, ${formattedDate}`}>
           <span className="truncate">{formattedTime}</span>
           <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 rounded-xl bg-[rgba(17,19,28,0.88)] text-[var(--text-primary)] text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[5000] border border-white/10">
             {formattedDate}
@@ -339,16 +339,16 @@ const TopPanel = memo(function TopPanel() {
       </div>
 
       <div className="flex-1 flex items-center justify-end gap-1 min-w-0 relative" ref={menuRef}>
-        <button className={trayButton('accessibility')} title="Accessibility" onClick={() => setActivePanel(activePanel === 'accessibility' ? null : 'accessibility')}>
+        <button className={trayButton('accessibility')} title="Accessibility" aria-label="Open accessibility controls" onClick={() => setActivePanel(activePanel === 'accessibility' ? null : 'accessibility')}>
           <SystemIcon name="Accessibility" size={14} />
         </button>
-        <button className={trayButton('keyboard')} title="Keyboard" onClick={() => setActivePanel(activePanel === 'keyboard' ? null : 'keyboard')}>
+        <button className={trayButton('keyboard')} title="Keyboard" aria-label="Open keyboard controls" onClick={() => setActivePanel(activePanel === 'keyboard' ? null : 'keyboard')}>
           <SystemIcon name="Keyboard" size={14} />
         </button>
-        <button className={trayButton('network')} title="Network" onClick={() => setActivePanel(activePanel === 'network' ? null : 'network')}>
+        <button className={trayButton('network')} title="Network" aria-label="Open network controls" onClick={() => setActivePanel(activePanel === 'network' ? null : 'network')}>
           <SystemIcon name={state.systemControls.networkEnabled ? 'Wifi' : 'WifiOff'} size={14} />
         </button>
-        <button className={trayButton('volume')} title="Volume" onClick={() => setActivePanel(activePanel === 'volume' ? null : 'volume')}>
+        <button className={trayButton('volume')} title="Volume" aria-label="Open volume controls" onClick={() => setActivePanel(activePanel === 'volume' ? null : 'volume')}>
           <SystemIcon name={state.systemControls.muted ? 'VolumeX' : 'Volume2'} size={14} />
         </button>
         <button
@@ -373,11 +373,11 @@ const TopPanel = memo(function TopPanel() {
             <SystemIcon name="Robot" size={15} className="text-white drop-shadow" />
           </span>
         </button>
-        <button className={trayButton('battery', 'gap-1')} title="Battery" onClick={() => setActivePanel(activePanel === 'battery' ? null : 'battery')}>
+        <button className={trayButton('battery', 'gap-1')} title="Battery" aria-label="Open battery controls" onClick={() => setActivePanel(activePanel === 'battery' ? null : 'battery')}>
           <SystemIcon name="Battery" size={14} />
           <span className="text-[10px] shrink-0">100%</span>
         </button>
-        <button className={trayButton('power')} title="Power menu" onClick={() => setActivePanel(activePanel === 'power' ? null : 'power')}>
+        <button className={trayButton('power')} title="Power menu" aria-label="Open power menu" onClick={() => setActivePanel(activePanel === 'power' ? null : 'power')}>
           <SystemIcon name="Power" size={14} />
         </button>
 
