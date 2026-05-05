@@ -74,6 +74,20 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
   const isMaximized = win.state === 'maximized';
   const isMinimized = win.state === 'minimized';
   const isFocused = win.isFocused;
+  const viewportWidth = typeof window === 'undefined' ? win.size.width : window.innerWidth;
+  const viewportHeight = typeof window === 'undefined' ? win.size.height + TOP_PANEL_HEIGHT : window.innerHeight;
+  const compactWindow = state.uiPreferences.tabletMode || viewportWidth <= 700;
+  const bottomReserve = compactWindow ? 132 : 96;
+  const maxFrameWidth = Math.max(MIN_W, viewportWidth - (compactWindow ? 0 : 16));
+  const maxFrameHeight = Math.max(MIN_H, viewportHeight - TOP_PANEL_HEIGHT - bottomReserve);
+  const frameWidth = (isMaximized || compactWindow) ? viewportWidth : Math.min(win.size.width, maxFrameWidth);
+  const frameHeight = (isMaximized || compactWindow) ? maxFrameHeight : Math.min(win.size.height, maxFrameHeight);
+  const frameLeft = (isMaximized || compactWindow)
+    ? 0
+    : Math.min(Math.max(win.position.x, 8), Math.max(8, viewportWidth - frameWidth - 8));
+  const frameTop = (isMaximized || compactWindow)
+    ? TOP_PANEL_HEIGHT
+    : Math.min(Math.max(win.position.y, TOP_PANEL_HEIGHT), Math.max(TOP_PANEL_HEIGHT, viewportHeight - frameHeight - bottomReserve));
 
   const focusThis = useCallback(() => {
     if (!win.isFocused && win.state !== 'minimized') {
@@ -238,10 +252,10 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
       ref={frameRef}
       className={`absolute flex flex-col select-none ${isFocused ? 'window-glow-focused' : 'window-glow-unfocused'}`}
       style={{
-        left: win.position.x,
-        top: win.position.y,
-        width: win.size.width,
-        height: win.size.height,
+        left: frameLeft,
+        top: frameTop,
+        width: frameWidth,
+        height: frameHeight,
         zIndex: win.zIndex,
         borderRadius: isMaximized ? 0 : 12,
         background: 'rgba(30, 30, 35, 0.85)',

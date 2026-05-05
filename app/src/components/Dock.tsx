@@ -49,6 +49,7 @@ const Dock = memo(function Dock() {
   const iconSize = state.uiPreferences.tabletMode ? Math.max(58, baseSize) : baseSize;
   const launcherSize = iconSize;
   const maxScale = Math.max(1, state.dockPreferences.magnification);
+  const compactViewport = state.uiPreferences.tabletMode || (typeof window !== 'undefined' && window.innerWidth <= 700);
 
   // Magnification scale calculation
   const getScale = (index: number) => {
@@ -155,7 +156,7 @@ const Dock = memo(function Dock() {
 
   return (
     <div
-      className="fixed bottom-2 left-1/2 -translate-x-1/2 z-[150] flex items-end gap-1 px-3 pb-2 pt-2 max-w-[calc(100vw-12px)] overflow-visible"
+      className="iplinux-dock fixed bottom-2 left-1/2 -translate-x-1/2 z-[150] flex items-end gap-1 px-3 pb-2 pt-2 max-w-[calc(100vw-12px)]"
       style={{
         background: `rgba(20, 20, 25, ${state.dockPreferences.transparency})`,
         backdropFilter: `blur(${state.uiPreferences.blurIntensity}px) saturate(220%)`,
@@ -164,6 +165,9 @@ const Dock = memo(function Dock() {
         border: '1px solid rgba(255,255,255,0.08)',
         boxShadow: '0 18px 54px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.1)',
         animation: 'dockSlideUp 400ms cubic-bezier(0, 0, 0.2, 1)',
+        overflowX: compactViewport ? 'auto' : 'visible',
+        overflowY: compactViewport ? 'hidden' : 'visible',
+        scrollbarWidth: 'none',
       }}
       onMouseLeave={() => setHoveredIndex(null)}
     >
@@ -236,6 +240,7 @@ const Dock = memo(function Dock() {
           from { transform: scale(0); }
           to { transform: scale(1); }
         }
+        .iplinux-dock::-webkit-scrollbar { display: none; }
       `}</style>
     </div>
   );

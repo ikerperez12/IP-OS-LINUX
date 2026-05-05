@@ -6,7 +6,9 @@ import { useCallback, memo, useEffect, useMemo, useRef, useState } from 'react';
 import type { DesktopIcon, Position } from '@/types';
 import { useOS } from '@/hooks/useOSStore';
 import {
+  arrangeDesktopIcons,
   cellForPosition,
+  cellKey,
   createDesktopGridMetrics,
   findIconAtCell,
   normalizePositionToGrid,
@@ -91,7 +93,7 @@ const FolderIcon = memo(function FolderIcon({ icon, size }: { icon: DesktopIcon;
 const Desktop = memo(function Desktop() {
   const { state, dispatch } = useOS();
   const disabledAppIds = state.disabledAppIds;
-  const desktopIcons = useMemo(
+  const rawDesktopIcons = useMemo(
     () => state.desktopIcons
       .map((icon) => icon.kind === 'folder'
         ? { ...icon, children: (icon.children || []).filter((child) => !child.appId || !disabledAppIds.includes(child.appId)) }
@@ -131,6 +133,17 @@ const Desktop = memo(function Desktop() {
     ),
     [state.uiPreferences.iconScale, state.uiPreferences.tabletMode, viewport.height, viewport.width]
   );
+
+  const desktopIcons = useMemo(() => {
+    const occupied = new Set<string>();
+    const hasCollision = rawDesktopIcons.some((icon) => {
+      const key = cellKey(cellForPosition(icon.position, metrics));
+      if (occupied.has(key)) return true;
+      occupied.add(key);
+      return false;
+    });
+    return hasCollision ? arrangeDesktopIcons(rawDesktopIcons, metrics) : rawDesktopIcons;
+  }, [metrics, rawDesktopIcons]);
 
   const selectedIds = useMemo(
     () => desktopIcons.filter((icon) => icon.isSelected).map((icon) => icon.id),
