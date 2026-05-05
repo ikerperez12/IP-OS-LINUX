@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">IP Linux icon</title>
+  <desc id="desc">Hexagonal purple and cyan desktop mark with an orange core.</desc>
+  <defs>
+    <linearGradient id="shell" x1="60" y1="40" x2="450" y2="490" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8B5CF6"/>
+      <stop offset="0.52" stop-color="#06B6D4"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+    <radialGradient id="core" cx="0" cy="0" r="1" gradientTransform="translate(256 256) rotate(90) scale(86)">
+      <stop stop-color="#FDE68A"/>
+      <stop offset="0.72" stop-color="#F97316"/>
+      <stop offset="1" stop-color="#C2410C"/>
+    </radialGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feColorMatrix in="blur" values="0 0 0 0 0.49 0 0 0 0 0.30 0 0 0 0 1 0 0 0 .65 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#070816"/>
+  <path filter="url(#glow)" d="M256 54 438 158v196L256 458 74 354V158Z" fill="url(#shell)"/>
+  <path d="M256 104 392 182v148L256 408 120 330V182Z" fill="rgba(5,8,22,.44)" stroke="rgba(255,255,255,.36)" stroke-width="10"/>
+  <circle cx="256" cy="256" r="66" fill="url(#core)" stroke="rgba(255,255,255,.62)" stroke-width="8"/>
+  <path d="M212 250h88M256 206v100" stroke="#fff" stroke-width="22" stroke-linecap="round" opacity=".9"/>
+</svg>

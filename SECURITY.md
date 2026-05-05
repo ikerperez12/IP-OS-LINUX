@@ -22,7 +22,7 @@ State is stored on the visitor's own browser, never sent to a server:
 | `iplinux_filesystem`               | IndexedDB     | Virtual file system contents   |
 | `iplinux_app_handoff_v1`           | localStorage  | Per-app UI state (scroll etc.) |
 | `iplinux_disabled_apps_v1`         | localStorage  | App Store install/remove list  |
-| `iplinux_desktop_icons_v3/v4`      | localStorage  | Desktop icon positions         |
+| `iplinux_desktop_icons_v6`         | localStorage  | Desktop icon positions         |
 
 The clipboard tray (Round 7) is held only in memory; it is **not** saved to
 storage and resets on reload. Never persist private clipboard content.
