@@ -7,7 +7,26 @@ import { format } from 'date-fns';
 import { useOS } from '@/hooks/useOSStore';
 import SystemIcon from './SystemIcon';
 
-type TrayPanel = 'accessibility' | 'keyboard' | 'network' | 'volume' | 'cloud' | 'ai' | 'battery' | 'power' | null;
+type TrayPanel = 'accessibility' | 'keyboard' | 'network' | 'volume' | 'shortcuts' | 'battery' | 'power' | null;
+
+const SHORTCUTS: { combo: string; label: string; group: 'System' | 'Windows' | 'Desktop' | 'Apps' }[] = [
+  { combo: 'Super', label: 'Toggle App Launcher', group: 'System' },
+  { combo: 'Alt + Space', label: 'Global Search (Spotlight)', group: 'System' },
+  { combo: 'Ctrl + Alt + T', label: 'Open Terminal', group: 'System' },
+  { combo: 'Super + D', label: 'Show Desktop / Minimize all', group: 'Windows' },
+  { combo: 'Alt + Tab', label: 'Switch Window', group: 'Windows' },
+  { combo: 'Ctrl + Shift + W', label: 'Close active window', group: 'Windows' },
+  { combo: 'Esc', label: 'Close launcher / notifications / folder', group: 'Windows' },
+  { combo: 'Ctrl + A', label: 'Select all desktop icons', group: 'Desktop' },
+  { combo: 'Ctrl / Shift + click', label: 'Multi-select icons', group: 'Desktop' },
+  { combo: 'Drag empty area', label: 'Selection rectangle', group: 'Desktop' },
+  { combo: 'Drag icon onto icon', label: 'Create folder', group: 'Desktop' },
+  { combo: 'Enter', label: 'Open selected icons', group: 'Desktop' },
+  { combo: 'Delete', label: 'Remove selected shortcuts', group: 'Desktop' },
+  { combo: 'Right click', label: 'Context menu', group: 'Desktop' },
+  { combo: 'Click clock', label: 'Open notification center', group: 'Apps' },
+  { combo: 'Click activities', label: 'Open app launcher', group: 'Apps' },
+];
 
 const PanelShell = ({
   title,
@@ -36,6 +55,69 @@ const PanelShell = ({
     <div className="p-3">{children}</div>
   </div>
 );
+
+const ShortcutsPanel = ({ onClose }: { onClose: () => void }) => {
+  const groups = ['System', 'Windows', 'Desktop', 'Apps'] as const;
+  return (
+    <div
+      className="absolute top-full right-0 mt-2 rounded-2xl z-[5000] overflow-hidden"
+      style={{
+        width: 360,
+        background: 'rgba(17,19,28,0.85)',
+        boxShadow: '0 28px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.09)',
+        border: '1px solid rgba(255,255,255,0.12)',
+        backdropFilter: 'blur(28px) saturate(220%)',
+        animation: 'menuAppear 140ms cubic-bezier(0, 0, 0.2, 1)',
+      }}
+    >
+      <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+        <span
+          className="w-7 h-7 rounded-full flex items-center justify-center"
+          style={{ background: 'linear-gradient(135deg, #7C4DFF, #4A148C)', boxShadow: '0 0 12px rgba(124,77,255,0.45)' }}
+        >
+          <SystemIcon name="Robot" size={14} className="text-white" />
+        </span>
+        <span className="text-sm font-semibold text-[var(--text-primary)] flex-1">Keyboard Shortcuts</span>
+        <button
+          onClick={onClose}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.08)]"
+          aria-label="Close shortcuts"
+        >
+          <SystemIcon name="X" size={14} />
+        </button>
+      </div>
+      <div className="p-3 max-h-[460px] overflow-auto space-y-3">
+        {groups.map((g) => (
+          <div key={g}>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] mb-1 px-2">{g}</div>
+            <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              {SHORTCUTS.filter((s) => s.group === g).map((s, idx, arr) => (
+                <div
+                  key={s.combo + s.label}
+                  className="flex items-center gap-2 px-3 py-2"
+                  style={{ borderBottom: idx === arr.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.05)' }}
+                >
+                  <span className="flex-1 text-[12px] text-[var(--text-primary)] truncate">{s.label}</span>
+                  <kbd
+                    className="text-[10px] font-mono px-2 py-1 rounded-md whitespace-nowrap"
+                    style={{
+                      background: 'rgba(124,77,255,0.18)',
+                      border: '1px solid rgba(124,77,255,0.35)',
+                      color: '#E0CFFF',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    {s.combo}
+                  </kbd>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const ToggleRow = ({
   icon,
@@ -142,11 +224,13 @@ const TopPanel = memo(function TopPanel() {
                 <option value="DE">German</option>
                 <option value="FR">French</option>
               </select>
-              <div className="rounded-xl p-3 text-[11px] leading-5 text-[var(--text-secondary)]" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                <div><strong>Alt + Space</strong> Global Search</div>
-                <div><strong>Ctrl + Alt + T</strong> Terminal</div>
-                <div><strong>Super + D</strong> Minimize all</div>
-              </div>
+              <button
+                className="w-full mt-2 px-3 py-2 rounded-xl text-xs font-semibold text-white"
+                style={{ background: 'var(--accent-primary)' }}
+                onClick={() => setActivePanel('shortcuts')}
+              >
+                See all shortcuts
+              </button>
             </div>
           </PanelShell>
         );
@@ -181,26 +265,9 @@ const TopPanel = memo(function TopPanel() {
             </div>
           </PanelShell>
         );
-      case 'cloud':
+      case 'shortcuts':
         return (
-          <PanelShell title="Cloud Sync" icon="CloudUpload">
-            <div className="rounded-xl p-3 text-sm" style={{ background: 'rgba(255,255,255,0.05)' }}>
-              <div className="font-semibold text-[var(--text-primary)]">{state.integrationStatus.supabaseConfigured ? 'Supabase configured' : 'Local mode'}</div>
-              <div className="text-xs text-[var(--text-secondary)] mt-1">No secret keys are exposed in the browser. Cloud sync uses public Supabase anon config only.</div>
-            </div>
-            <button className="w-full mt-3 px-3 py-2 rounded-xl text-xs font-semibold text-white" style={{ background: 'var(--accent-primary)' }} onClick={() => dispatch({ type: 'OPEN_WINDOW', appId: 'settings' })}>
-              Open Settings
-            </button>
-          </PanelShell>
-        );
-      case 'ai':
-        return (
-          <PanelShell title="AI Bridge" icon="Robot">
-            <div className="rounded-xl p-3 text-sm" style={{ background: 'rgba(255,255,255,0.05)' }}>
-              <div className="font-semibold text-[var(--text-primary)]">{state.integrationStatus.aiConfigured ? 'AI bridge ready' : 'AI bridge offline'}</div>
-              <div className="text-xs text-[var(--text-secondary)] mt-1">OpenAI calls stay behind the Supabase Edge Function iplinux-ai.</div>
-            </div>
-          </PanelShell>
+          <ShortcutsPanel onClose={() => setActivePanel(null)} />
         );
       case 'battery':
         return (
@@ -282,11 +349,27 @@ const TopPanel = memo(function TopPanel() {
         <button className={trayButton('volume')} title="Volume" onClick={() => setActivePanel(activePanel === 'volume' ? null : 'volume')}>
           <SystemIcon name={state.systemControls.muted ? 'VolumeX' : 'Volume2'} size={14} />
         </button>
-        <button className={trayButton('cloud')} title="Cloud status" onClick={() => setActivePanel(activePanel === 'cloud' ? null : 'cloud')}>
-          <SystemIcon name={state.integrationStatus.supabaseConfigured ? 'CloudUpload' : 'Cloud'} size={14} style={{ color: state.integrationStatus.supabaseConfigured ? 'var(--accent-success)' : 'var(--text-secondary)' }} />
-        </button>
-        <button className={trayButton('ai')} title="AI bridge" onClick={() => setActivePanel(activePanel === 'ai' ? null : 'ai')}>
-          <SystemIcon name="Robot" size={14} style={{ color: state.integrationStatus.aiConfigured ? 'var(--accent-primary)' : 'var(--text-secondary)' }} />
+        <button
+          className={trayButton('shortcuts', 'relative')}
+          title="Keyboard shortcuts"
+          onClick={() => setActivePanel(activePanel === 'shortcuts' ? null : 'shortcuts')}
+          aria-label="Open keyboard shortcuts"
+        >
+          <span
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-transform"
+            style={{
+              background: activePanel === 'shortcuts'
+                ? 'linear-gradient(135deg, #7C4DFF, #4A148C)'
+                : 'linear-gradient(135deg, rgba(124,77,255,0.55), rgba(74,20,140,0.65))',
+              boxShadow: activePanel === 'shortcuts'
+                ? '0 0 14px rgba(124,77,255,0.6), inset 0 1px 0 rgba(255,255,255,0.25)'
+                : '0 0 8px rgba(124,77,255,0.35), inset 0 1px 0 rgba(255,255,255,0.18)',
+              transform: activePanel === 'shortcuts' ? 'scale(1.05)' : 'scale(1)',
+              animation: 'robotFloat 3.6s ease-in-out infinite',
+            }}
+          >
+            <SystemIcon name="Robot" size={15} className="text-white drop-shadow" />
+          </span>
         </button>
         <button className={trayButton('battery', 'gap-1')} title="Battery" onClick={() => setActivePanel(activePanel === 'battery' ? null : 'battery')}>
           <SystemIcon name="Battery" size={14} />
@@ -303,6 +386,10 @@ const TopPanel = memo(function TopPanel() {
         @keyframes menuAppear {
           from { opacity: 0; transform: scale(0.95) translateY(-4px); }
           to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes robotFloat {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-1px) scale(1.04); }
         }
       `}</style>
     </div>
