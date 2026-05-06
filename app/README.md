@@ -1,6 +1,10 @@
-# IP Linux Web App
+# IP Linux App
 
-This directory contains the React/Vite frontend for IP Linux.
+This directory contains the React/Vite frontend for [IP Linux](../README.md).
+
+- Live site: <https://ip-os-linux.vercel.app>
+- Public release notes, screenshots, security posture and architecture live in the repository root README.
+- Vercel builds this directory through the root `vercel.json`.
 
 ## Development
 
