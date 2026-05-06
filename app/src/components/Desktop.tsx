@@ -99,7 +99,7 @@ const Desktop = memo(function Desktop() {
         ? { ...icon, children: (icon.children || []).filter((child) => !child.appId || !disabledAppIds.includes(child.appId)) }
         : icon)
       .filter((icon) => {
-        if (icon.kind === 'folder') return (icon.children || []).length > 0;
+        if (icon.kind === 'folder') return true;
         return !icon.appId || !disabledAppIds.includes(icon.appId);
       }),
     [disabledAppIds, state.desktopIcons]
@@ -174,7 +174,11 @@ const Desktop = memo(function Desktop() {
   const openIcon = useCallback(
     (icon: DesktopIcon) => {
       if (icon.kind === 'folder') {
-        setOpenFolderId(icon.id);
+        if ((icon.children || []).length > 0) {
+          setOpenFolderId(icon.id);
+        } else {
+          dispatch({ type: 'OPEN_WINDOW', appId: 'filemanager' });
+        }
         return;
       }
       if (icon.appId) dispatch({ type: 'OPEN_WINDOW', appId: icon.appId });
@@ -376,6 +380,7 @@ const Desktop = memo(function Desktop() {
           { id: 'clear-selection', label: 'Clear Selection', icon: 'CircleX', shortcut: 'Esc', action: 'CLEAR_DESKTOP_SELECTION', disabled: selectedIds.length === 0 },
           { id: 'div0', label: '', action: '', divider: true },
           { id: 'new-folder', label: 'New Folder', icon: 'FolderPlus', action: 'NEW_FOLDER' },
+          { id: 'new-file', label: 'New Text File', icon: 'FilePlus', action: 'NEW_TEXT_FILE' },
           { id: 'div1', label: '', action: '', divider: true },
           { id: 'open-term', label: 'Open in Terminal', icon: 'Terminal', action: 'OPEN_APP:terminal' },
           { id: 'change-bg', label: 'Change Background', icon: 'Image', action: 'CHANGE_BG' },

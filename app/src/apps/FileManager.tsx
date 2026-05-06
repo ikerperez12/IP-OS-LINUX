@@ -8,7 +8,7 @@ import type { FileSystemNode } from '@/types';
 import { useOS } from '@/hooks/useOSStore';
 import {
   Folder, FileText, ChevronRight, Home, ArrowUp,
-  Grid3x3, List, Search, Trash2, FolderPlus, FilePlus, Edit, ExternalLink
+  Download, Grid3x3, Image as ImageIcon, List, Music, Search, Trash2, FolderPlus, FilePlus, Video, Edit, ExternalLink
 } from 'lucide-react';
 
 const SIDEBAR_ITEMS = [
@@ -47,12 +47,13 @@ export default function FileManager() {
   const [currentFolderId, setCurrentFolderId] = useState<string>('');
   
   useEffect(() => {
-    if (!currentFolderId && Object.keys(fs.fs.nodes).length > 0) {
-      const node = fs.findNodeByPath('/home/user');
-      if (node) setCurrentFolderId(node.id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentFolderId]);
+    const hasNodes = Object.keys(fs.fs.nodes).length > 0;
+    const currentStillExists = Boolean(currentFolderId && fs.fs.nodes[currentFolderId]);
+    if (!hasNodes || currentStillExists) return;
+
+    const fallback = fs.findNodeByPath('/home/user') || Object.values(fs.fs.nodes).find((node) => node.parentId === null);
+    if (fallback) setCurrentFolderId(fallback.id);
+  }, [currentFolderId, fs.fs.nodes, fs.findNodeByPath]);
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,14 +111,14 @@ export default function FileManager() {
   );
 
   const handleCreateFolder = useCallback(() => {
-    if (!newFolderName.trim()) return;
+    if (!currentFolderId || !newFolderName.trim()) return;
     fs.createFolder(currentFolderId, newFolderName.trim());
     setNewFolderName('');
     setIsCreatingFolder(false);
   }, [fs, currentFolderId, newFolderName]);
 
   const handleCreateFile = useCallback(() => {
-    if (!newFileName.trim()) return;
+    if (!currentFolderId || !newFileName.trim()) return;
     fs.createFile(currentFolderId, newFileName.trim());
     setNewFileName('');
     setIsCreatingFile(false);
@@ -171,10 +172,10 @@ export default function FileManager() {
             {item.id === 'home' && <Home size={14} />}
             {item.id === 'desktop' && <Folder size={14} />}
             {item.id === 'documents' && <FileText size={14} />}
-            {item.id === 'downloads' && <Folder size={14} />}
-            {item.id === 'music' && <span>🎵</span>}
-            {item.id === 'pictures' && <span>🖼</span>}
-            {item.id === 'videos' && <span>🎬</span>}
+            {item.id === 'downloads' && <Download size={14} />}
+            {item.id === 'music' && <Music size={14} />}
+            {item.id === 'pictures' && <ImageIcon size={14} />}
+            {item.id === 'videos' && <Video size={14} />}
             {item.id === 'trash' && <Trash2 size={14} />}
             <span className="truncate">{item.name}</span>
           </button>
@@ -246,6 +247,8 @@ export default function FileManager() {
             onClick={() => { setIsCreatingFolder(true); setTimeout(() => inputRef.current?.focus(), 50); }}
             className="w-7 h-7 rounded flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
             title="New Folder"
+            aria-label="Create new folder"
+            disabled={!currentFolderId}
           >
             <FolderPlus size={14} />
           </button>
@@ -253,6 +256,8 @@ export default function FileManager() {
             onClick={() => { setIsCreatingFile(true); setTimeout(() => inputRef.current?.focus(), 50); }}
             className="w-7 h-7 rounded flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
             title="New File"
+            aria-label="Create new file"
+            disabled={!currentFolderId}
           >
             <FilePlus size={14} />
           </button>

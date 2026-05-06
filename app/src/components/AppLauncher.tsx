@@ -5,17 +5,28 @@
 import { useState, useCallback, useRef, useEffect, memo } from 'react';
 import { useOS } from '@/hooks/useOSStore';
 import { getAppById } from '@/apps/registry';
-import { Search, X } from 'lucide-react';
+import { Plus, Search, X } from 'lucide-react';
 import AppIcon from './AppIcon';
 
 const CATEGORIES = ['Favorites', 'All', 'System', 'Productivity', 'Internet', 'Media', 'Games', 'DevTools', 'Creative'];
+
+type LauncherDrag = {
+  appId: string;
+  name: string;
+  icon: string;
+  start: { x: number; y: number };
+  current: { x: number; y: number };
+  moved: boolean;
+};
 
 const AppLauncher = memo(function AppLauncher() {
   const { state, dispatch } = useOS();
   const { appLauncherOpen, apps, dockItems } = state;
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [draggingApp, setDraggingApp] = useState<LauncherDrag | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dragSuppressClickRef = useRef(false);
 
   useEffect(() => {
     if (appLauncherOpen) {
@@ -37,6 +48,7 @@ const AppLauncher = memo(function AppLauncher() {
 
   const handleLaunch = useCallback(
     (appId: string) => {
+      if (dragSuppressClickRef.current) return;
       dispatch({ type: 'SET_APP_LAUNCHER', open: false });
       setTimeout(() => {
         dispatch({ type: 'OPEN_WINDOW', appId });
@@ -44,6 +56,78 @@ const AppLauncher = memo(function AppLauncher() {
     },
     [dispatch]
   );
+
+  const pinAppToDesktop = useCallback(
+    (appId: string, position?: { x: number; y: number }) => {
+      const app = apps.find((candidate) => candidate.id === appId);
+      if (!app) return;
+      dispatch({
+        type: 'ADD_DESKTOP_ICON',
+        icon: {
+          name: app.name,
+          icon: app.icon,
+          kind: 'app',
+          appId: app.id,
+          position: position || { x: 26, y: 18 },
+          isSelected: true,
+        },
+      });
+      dispatch({
+        type: 'ADD_NOTIFICATION',
+        notification: {
+          appId: 'desktop',
+          appName: 'Desktop',
+          appIcon: 'Desktop',
+          title: 'Shortcut added',
+          message: `${app.name} is now pinned to the desktop.`,
+          isRead: false,
+        },
+      });
+    },
+    [apps, dispatch]
+  );
+
+  useEffect(() => {
+    if (!draggingApp) return;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const moved = draggingApp.moved ||
+        Math.hypot(event.clientX - draggingApp.start.x, event.clientY - draggingApp.start.y) > 8;
+      setDraggingApp({
+        ...draggingApp,
+        current: { x: event.clientX, y: event.clientY },
+        moved,
+      });
+    };
+
+    const handleMouseUp = (event: MouseEvent) => {
+      const moved = draggingApp.moved ||
+        Math.hypot(event.clientX - draggingApp.start.x, event.clientY - draggingApp.start.y) > 8;
+      if (moved) {
+        dragSuppressClickRef.current = true;
+        const desktopTop = 28;
+        const desktopBottomReserve = 84;
+        if (event.clientY > desktopTop && event.clientY < window.innerHeight - desktopBottomReserve) {
+          pinAppToDesktop(draggingApp.appId, {
+            x: event.clientX - 50,
+            y: event.clientY - desktopTop - 58,
+          });
+          dispatch({ type: 'SET_APP_LAUNCHER', open: false });
+        }
+        window.setTimeout(() => {
+          dragSuppressClickRef.current = false;
+        }, 180);
+      }
+      setDraggingApp(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp, { once: true });
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [dispatch, draggingApp, pinAppToDesktop]);
 
   const filteredApps = apps.filter((app) => {
     if (state.disabledAppIds.includes(app.id)) return false;
@@ -174,10 +258,36 @@ const AppLauncher = memo(function AppLauncher() {
         }}
       >
         {filteredApps.map((app, index) => (
-          <button
+          <div
             key={app.id}
-            onClick={() => handleLaunch(app.id)}
-            className="flex flex-col items-center gap-1.5 p-2 rounded-2xl group transition-all"
+            role="button"
+            tabIndex={0}
+            onClick={(event) => {
+              if (dragSuppressClickRef.current) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+              }
+              handleLaunch(app.id);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handleLaunch(app.id);
+              }
+            }}
+            onMouseDown={(event) => {
+              if (event.button !== 0) return;
+              setDraggingApp({
+                appId: app.id,
+                name: app.name,
+                icon: app.icon,
+                start: { x: event.clientX, y: event.clientY },
+                current: { x: event.clientX, y: event.clientY },
+                moved: false,
+              });
+            }}
+            className="relative flex flex-col items-center gap-1.5 p-2 rounded-2xl group transition-all"
             aria-label={`Open ${app.name}`}
             style={{
               animation: `iconPop 250ms cubic-bezier(0.34, 1.56, 0.64, 1) ${200 + index * 12}ms both`,
@@ -189,13 +299,40 @@ const AppLauncher = memo(function AppLauncher() {
               e.currentTarget.style.background = 'transparent';
             }}
           >
+            <button
+              type="button"
+              className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+              style={{
+                background: 'rgba(124,77,255,0.88)',
+                border: '1px solid rgba(255,255,255,0.24)',
+                boxShadow: '0 8px 22px rgba(124,77,255,0.28)',
+              }}
+              onMouseDown={(event) => {
+                event.stopPropagation();
+              }}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                pinAppToDesktop(app.id);
+              }}
+              aria-label={`Add ${app.name} to desktop`}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  pinAppToDesktop(app.id);
+                }
+              }}
+            >
+              <Plus size={13} className="text-white" />
+            </button>
             <div className="group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-200">
               <AppIcon appId={app.id} size={state.uiPreferences.tabletMode ? 70 : 64} />
             </div>
             <span className="text-[10px] text-[var(--text-primary)] text-center truncate max-w-[92px] font-medium leading-tight">
               {app.name}
             </span>
-          </button>
+          </div>
         ))}
 
         {filteredApps.length === 0 && (
@@ -205,6 +342,25 @@ const AppLauncher = memo(function AppLauncher() {
           </div>
         )}
       </div>
+
+      {draggingApp?.moved && (
+        <div
+          className="pointer-events-none fixed z-[5000] flex flex-col items-center gap-1"
+          style={{
+            left: draggingApp.current.x - 38,
+            top: draggingApp.current.y - 38,
+            filter: 'drop-shadow(0 18px 28px rgba(0,0,0,0.42))',
+          }}
+        >
+          <AppIcon appId={draggingApp.appId} size={72} />
+          <span
+            className="rounded-full px-2 py-1 text-[10px] font-semibold text-white"
+            style={{ background: 'rgba(15,23,42,0.82)', border: '1px solid rgba(255,255,255,0.14)' }}
+          >
+            Drop on desktop
+          </span>
+        </div>
+      )}
 
       <style>{`
         @keyframes launcherFade {

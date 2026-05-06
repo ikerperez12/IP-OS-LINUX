@@ -4,11 +4,13 @@
 
 import { useEffect, useRef, memo } from 'react';
 import { useOS } from '@/hooks/useOSStore';
+import { useFileSystem } from '@/hooks/useFileSystem';
 import SystemIcon from './SystemIcon';
 import type { OSAction, OSState } from '@/types';
 
 const ContextMenu = memo(function ContextMenu() {
   const { state, dispatch } = useOS();
+  const fs = useFileSystem();
   const menuRef = useRef<HTMLDivElement>(null);
   const { contextMenu } = state;
 
@@ -87,7 +89,7 @@ const ContextMenu = memo(function ContextMenu() {
               if (item.disabled) return;
               dispatch({ type: 'HIDE_CONTEXT_MENU' });
               // Action dispatch handled by parent based on action string
-              handleMenuAction(item.action, state, dispatch);
+              handleMenuAction(item.action, state, dispatch, fs);
             }}
           >
             {item.icon && (
@@ -111,7 +113,27 @@ const ContextMenu = memo(function ContextMenu() {
   );
 });
 
-function handleMenuAction(action: string, state: OSState, dispatch: React.Dispatch<OSAction>) {
+function nextAvailableName(existingNames: string[], base: string, extension = '') {
+  const taken = new Set(existingNames.map((name) => name.toLowerCase()));
+  const first = `${base}${extension}`;
+  if (!taken.has(first.toLowerCase())) return first;
+  for (let index = 2; index < 1000; index += 1) {
+    const candidate = `${base} ${index}${extension}`;
+    if (!taken.has(candidate.toLowerCase())) return candidate;
+  }
+  return `${base} ${Date.now()}${extension}`;
+}
+
+function getDesktopFolder(fs: ReturnType<typeof useFileSystem>) {
+  return fs.findNodeByPath('/home/user/Desktop') || fs.findNodeByPath('/home/user');
+}
+
+function handleMenuAction(
+  action: string,
+  state: OSState,
+  dispatch: React.Dispatch<OSAction>,
+  fs: ReturnType<typeof useFileSystem>
+) {
   const [cmd, ...args] = action.split(':');
   switch (cmd) {
     case 'OPEN_APP': {
@@ -142,17 +164,41 @@ function handleMenuAction(action: string, state: OSState, dispatch: React.Dispat
       break;
     }
     case 'NEW_FOLDER': {
+      const existingNames = state.desktopIcons.map((icon) => icon.name);
+      const name = nextAvailableName(existingNames, 'New Folder');
+      const desktopFolder = getDesktopFolder(fs);
+      const nodeId = desktopFolder ? fs.createFolder(desktopFolder.id, name) : undefined;
       dispatch({
         type: 'ADD_DESKTOP_ICON',
         icon: {
-          name: 'New Folder',
+          name,
           icon: 'Folder',
           kind: 'folder',
+          fileSystemNodeId: nodeId,
           position: { x: state.contextMenu.x, y: state.contextMenu.y },
           isSelected: true,
           children: [],
           folderAccent: state.theme.accent,
           folderLayout: 'grid',
+        },
+      });
+      break;
+    }
+    case 'NEW_TEXT_FILE': {
+      const existingNames = state.desktopIcons.map((icon) => icon.name);
+      const name = nextAvailableName(existingNames, 'New Text File', '.txt');
+      const desktopFolder = getDesktopFolder(fs);
+      const nodeId = desktopFolder ? fs.createFile(desktopFolder.id, name, '') : undefined;
+      dispatch({
+        type: 'ADD_DESKTOP_ICON',
+        icon: {
+          name,
+          icon: 'FileText',
+          kind: 'app',
+          appId: 'texteditor',
+          fileSystemNodeId: nodeId,
+          position: { x: state.contextMenu.x, y: state.contextMenu.y },
+          isSelected: true,
         },
       });
       break;

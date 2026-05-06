@@ -166,7 +166,34 @@ const createDefaultDesktopIcons = (): DesktopIcon[] => {
       };
     });
 
-  return folders;
+  const featuredAppIds = [
+    'filemanager',
+    'browser',
+    'terminal',
+    'codeeditor',
+    'settings',
+    'appstore',
+    'musicplayer',
+    'matrixrain',
+  ];
+
+  const featuredApps = featuredAppIds
+    .map((id) => APP_REGISTRY.find((app) => app.id === id))
+    .filter(Boolean)
+    .map((app, offset) => ({
+      id: `desk-app-${app!.id}`,
+      name: app!.name,
+      icon: app!.icon,
+      kind: 'app' as const,
+      appId: app!.id,
+      position: {
+        x: 26 + ((folders.length + offset) % 4) * 126,
+        y: 18 + Math.floor((folders.length + offset) / 4) * 136,
+      },
+      isSelected: false,
+    }));
+
+  return [...folders, ...featuredApps];
 };
 
 const defaultDesktopIcons: DesktopIcon[] = createDefaultDesktopIcons();
@@ -573,7 +600,12 @@ function osReducer(state: OSState, action: OSAction): OSState {
         kind: action.icon.kind || 'app',
         position: normalizePositionToGrid(action.icon.position, metrics),
       };
-      const next = arrangeDesktopIcons([...state.desktopIcons, icon], metrics);
+      const next = moveItemsToGrid(
+        [...state.desktopIcons.map((item) => ({ ...item, isSelected: false })), icon],
+        [icon.id],
+        icon.position,
+        metrics
+      );
       return { ...state, desktopIcons: next };
     }
 
@@ -938,7 +970,7 @@ export const OSProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
   useEffect(() => {
     Promise.all([
-      storageGet<DesktopIcon[]>('iplinux_desktop_icons_v6'),
+      storageGet<DesktopIcon[]>('iplinux_desktop_icons_v7'),
       storageGet<OSState['theme']>('iplinux_theme_v2'),
       storageGet<UIPreferences>('iplinux_ui_preferences_v2'),
       storageGet<DockPreferences>('iplinux_dock_preferences_v2'),
@@ -958,7 +990,7 @@ export const OSProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
   useEffect(() => {
     if (isLoaded) {
-      storageSet('iplinux_desktop_icons_v6', state.desktopIcons);
+      storageSet('iplinux_desktop_icons_v7', state.desktopIcons);
     }
   }, [state.desktopIcons, isLoaded]);
 
