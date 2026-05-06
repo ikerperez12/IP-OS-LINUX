@@ -3,6 +3,7 @@
 // ============================================================
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { OSProvider, useOS } from '@/hooks/useOSStore';
 import BootSequence from '@/components/BootSequence';
 import LoginScreen from '@/components/LoginScreen';
@@ -246,6 +247,7 @@ export default function App() {
   return (
     <OSProvider>
       <AppShell />
+      <Analytics />
     </OSProvider>
   );
 }
