@@ -1,7 +1,7 @@
 {
   "name": "IP Linux",
   "short_name": "IP Linux",
-  "description": "A premium browser-based desktop environment built with React and Vite.",
+  "description": "A premium browser-based desktop environment with glass UI, resizable windows, apps, reactive wallpapers, local-first storage and a Vercel-ready static deployment.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -18,11 +18,18 @@
   ],
   "screenshots": [
     {
-      "src": "/og-image.png",
-      "sizes": "1400x720",
+      "src": "/screenshots/ip-linux-desktop.png",
+      "sizes": "1332x768",
       "type": "image/png",
       "form_factor": "wide",
       "label": "IP Linux desktop shell preview"
+    },
+    {
+      "src": "/screenshots/ip-linux-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "IP Linux mobile shell preview"
     }
   ]
 }

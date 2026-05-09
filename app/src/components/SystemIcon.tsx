@@ -39,6 +39,7 @@ import { FaFont } from '@react-icons/all-files/fa/FaFont';
 import { FaGamepad } from '@react-icons/all-files/fa/FaGamepad';
 import { FaGitAlt } from '@react-icons/all-files/fa/FaGitAlt';
 import { FaGlobe } from '@react-icons/all-files/fa/FaGlobe';
+import { FaGithub } from '@react-icons/all-files/fa/FaGithub';
 import { FaHome } from '@react-icons/all-files/fa/FaHome';
 import { FaImage } from '@react-icons/all-files/fa/FaImage';
 import { FaImages } from '@react-icons/all-files/fa/FaImages';
@@ -183,6 +184,8 @@ const ICON_ALIASES: Record<string, IconType> = {
   FolderPlus: FaFolderPlus,
   Gamepad2: FaGamepad,
   GitBranch: FaGitAlt,
+  GitHub: FaGithub,
+  Github: FaGithub,
   Globe: FaGlobe,
   Grid: FaTable,
   Grid2x2: FaTable,

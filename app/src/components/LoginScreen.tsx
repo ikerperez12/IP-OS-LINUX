@@ -4,7 +4,7 @@
 
 import { useState, useCallback, memo, useRef, useEffect } from 'react';
 import { useOS } from '@/hooks/useOSStore';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Github } from 'lucide-react';
 
 // Particle background for login
 const LoginParticles = memo(function LoginParticles() {
@@ -103,6 +103,26 @@ const LoginScreen = memo(function LoginScreen() {
       }}
     >
       <LoginParticles />
+
+      <a
+        href="https://github.com/ikerperez12/IP-OS-LINUX"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-5 right-5 z-20 flex items-center gap-2 rounded-full transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+        aria-label="Open IP Linux GitHub repository"
+        style={{
+          padding: '10px 14px',
+          color: 'rgba(255,255,255,0.9)',
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.14), rgba(124,77,255,0.2))',
+          border: '1px solid rgba(255,255,255,0.18)',
+          boxShadow: '0 18px 50px rgba(0,0,0,0.28), 0 0 22px rgba(124,77,255,0.22), inset 0 1px 0 rgba(255,255,255,0.24)',
+          backdropFilter: 'blur(20px) saturate(190%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(190%)',
+        }}
+      >
+        <Github size={16} aria-hidden="true" />
+        <span className="text-[11px] font-semibold tracking-[0.18em] uppercase hidden sm:inline">GitHub</span>
+      </a>
 
       {/* Content */}
       <div

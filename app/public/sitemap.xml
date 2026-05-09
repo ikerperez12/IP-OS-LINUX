@@ -1,7 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+>
   <url>
     <loc>https://ip-os-linux.vercel.app/</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://ip-os-linux.vercel.app/og-image.png</image:loc>
+      <image:title>IP Linux browser desktop environment</image:title>
+      <image:caption>Premium web desktop interface with glass UI, dock, apps and reactive wallpaper.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://ip-os-linux.vercel.app/screenshots/ip-linux-desktop.png</image:loc>
+      <image:title>IP Linux desktop screenshot</image:title>
+      <image:caption>Desktop grid, dock, launcher and built-in web apps in IP Linux.</image:caption>
+    </image:image>
   </url>
 </urlset>

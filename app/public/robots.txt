@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /_vercel/
 
-Sitemap: /sitemap.xml
+Sitemap: https://ip-os-linux.vercel.app/sitemap.xml

@@ -339,6 +339,23 @@ const TopPanel = memo(function TopPanel() {
       </div>
 
       <div className="flex-1 flex items-center justify-end gap-1 min-w-0 relative" ref={menuRef}>
+        <a
+          href="https://github.com/ikerperez12/IP-OS-LINUX"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="h-7 w-7 rounded-full transition-all flex items-center justify-center shrink-0 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(124,77,255,0.75)]"
+          title="Open IP Linux repository"
+          aria-label="Open IP Linux GitHub repository"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.14), rgba(124,77,255,0.18))',
+            border: '1px solid rgba(255,255,255,0.18)',
+            boxShadow: '0 0 16px rgba(124,77,255,0.24), inset 0 1px 0 rgba(255,255,255,0.22)',
+            backdropFilter: 'blur(18px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(18px) saturate(180%)',
+          }}
+        >
+          <SystemIcon name="GitHub" size={14} className="text-white drop-shadow" />
+        </a>
         <button className={trayButton('accessibility')} title="Accessibility" aria-label="Open accessibility controls" onClick={() => setActivePanel(activePanel === 'accessibility' ? null : 'accessibility')}>
           <SystemIcon name="Accessibility" size={14} />
         </button>

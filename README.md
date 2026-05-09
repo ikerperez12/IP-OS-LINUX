@@ -128,10 +128,21 @@ See [SECURITY.md](SECURITY.md) before adding any cloud integration or third-part
 ## Production Notes
 
 - Live URL: [https://ip-os-linux.vercel.app](https://ip-os-linux.vercel.app)
+- Source repository: [https://github.com/ikerperez12/IP-OS-LINUX](https://github.com/ikerperez12/IP-OS-LINUX)
 - Deployment target: Vercel static site from `app/dist`
 - Build command: `npm ci --prefix app && npm run build --prefix app`
 - Runtime assets: `app/public/`, generated JS/CSS chunks, and README media under `.github/assets/`
 - Metadata: canonical URL, social preview tags, manifest, robots and sitemap ship from `app/`
+
+## Search And Indexing
+
+- Canonical URL: [https://ip-os-linux.vercel.app](https://ip-os-linux.vercel.app)
+- Sitemap: [https://ip-os-linux.vercel.app/sitemap.xml](https://ip-os-linux.vercel.app/sitemap.xml)
+- Robots: [https://ip-os-linux.vercel.app/robots.txt](https://ip-os-linux.vercel.app/robots.txt)
+- Google verification file: `app/public/google6a5cbce09f2cfee5.html`
+- Search themes: browser desktop environment, web desktop environment, React desktop UI, local-first web app, glassmorphism UI, virtual desktop, window manager web app, reactive wallpaper and Vercel static app.
+
+See [docs/search-indexing.md](docs/search-indexing.md) for the Google Search Console and Bing Webmaster Tools submission checklist.
 
 ## Repository Status
 
