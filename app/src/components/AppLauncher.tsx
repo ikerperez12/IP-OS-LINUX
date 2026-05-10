@@ -25,6 +25,7 @@ const AppLauncher = memo(function AppLauncher() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [draggingApp, setDraggingApp] = useState<LauncherDrag | null>(null);
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const inputRef = useRef<HTMLInputElement>(null);
   const dragSuppressClickRef = useRef(false);
 
@@ -45,6 +46,20 @@ const AppLauncher = memo(function AppLauncher() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [appLauncherOpen, dispatch]);
+
+  useEffect(() => {
+    const measure = () => setViewportWidth(window.visualViewport?.width || window.innerWidth);
+    measure();
+    const vv = window.visualViewport;
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    vv?.addEventListener('resize', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+      vv?.removeEventListener('resize', measure);
+    };
+  }, []);
 
   const handleLaunch = useCallback(
     (appId: string) => {
@@ -148,6 +163,13 @@ const AppLauncher = memo(function AppLauncher() {
 
   if (!appLauncherOpen) return null;
 
+  const phoneLauncher = viewportWidth <= 640;
+  const compactLauncher = viewportWidth <= 380;
+  const frequentIconSize = phoneLauncher ? (compactLauncher ? 42 : 46) : 60;
+  const appGridIconSize = phoneLauncher ? (compactLauncher ? 44 : 48) : state.uiPreferences.tabletMode ? 70 : 64;
+  const dragIconSize = phoneLauncher ? 50 : 72;
+  const appGridMin = phoneLauncher ? (compactLauncher ? 76 : 84) : state.uiPreferences.tabletMode ? 112 : 98;
+
   return (
     <div
       className="fixed inset-0 z-[3000] flex flex-col items-center"
@@ -156,7 +178,7 @@ const AppLauncher = memo(function AppLauncher() {
         backdropFilter: `blur(${state.uiPreferences.blurIntensity}px)`,
         WebkitBackdropFilter: `blur(${state.uiPreferences.blurIntensity}px)`,
         animation: 'launcherFade 300ms ease',
-        paddingTop: 32,
+        paddingTop: phoneLauncher ? 26 : 32,
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) dispatch({ type: 'SET_APP_LAUNCHER', open: false });
@@ -206,7 +228,7 @@ const AppLauncher = memo(function AppLauncher() {
         <div className="mt-6 w-[480px] max-w-[90vw]"
           style={{ animation: 'searchSlideDown 300ms ease 200ms both' }}>
           <p className="text-[10px] text-[var(--text-secondary)] uppercase tracking-[0.1em] mb-3">Frequently Used</p>
-          <div className="flex gap-5">
+          <div className="flex gap-3 sm:gap-5">
             {frequentApps.slice(0, 6).map((app) => (
               <button
                 key={app!.id}
@@ -215,7 +237,7 @@ const AppLauncher = memo(function AppLauncher() {
                 aria-label={`Open ${app!.name}`}
               >
                 <div className="group-hover:scale-110 transition-transform">
-                  <AppIcon appId={app!.id} size={60} />
+                  <AppIcon appId={app!.id} size={frequentIconSize} />
                 </div>
                 <span className="text-[10px] text-[var(--text-primary)] text-center truncate max-w-[64px]">{app!.name}</span>
               </button>
@@ -250,10 +272,10 @@ const AppLauncher = memo(function AppLauncher() {
       <div
         className="mt-6 w-[780px] max-w-[90vw] overflow-y-auto custom-scrollbar pb-8"
         style={{
-          maxHeight: 'calc(100vh - 220px)',
+          maxHeight: phoneLauncher ? 'calc(100dvh - 190px)' : 'calc(100vh - 220px)',
           display: 'grid',
-          gridTemplateColumns: `repeat(auto-fill, minmax(${state.uiPreferences.tabletMode ? 112 : 98}px, 1fr))`,
-          gap: state.uiPreferences.tabletMode ? 16 : 12,
+          gridTemplateColumns: `repeat(auto-fill, minmax(${appGridMin}px, 1fr))`,
+          gap: phoneLauncher ? (compactLauncher ? 8 : 10) : state.uiPreferences.tabletMode ? 16 : 12,
           animation: 'gridAppear 300ms cubic-bezier(0.34, 1.56, 0.64, 1) 200ms both',
         }}
       >
@@ -287,7 +309,7 @@ const AppLauncher = memo(function AppLauncher() {
                 moved: false,
               });
             }}
-            className="relative flex flex-col items-center gap-1.5 p-2 rounded-2xl group transition-all"
+            className="relative flex flex-col items-center gap-1.5 p-1.5 sm:p-2 rounded-2xl group transition-all"
             aria-label={`Open ${app.name}`}
             style={{
               animation: `iconPop 250ms cubic-bezier(0.34, 1.56, 0.64, 1) ${200 + index * 12}ms both`,
@@ -327,9 +349,9 @@ const AppLauncher = memo(function AppLauncher() {
               <Plus size={13} className="text-white" />
             </button>
             <div className="group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-200">
-              <AppIcon appId={app.id} size={state.uiPreferences.tabletMode ? 70 : 64} />
+              <AppIcon appId={app.id} size={appGridIconSize} />
             </div>
-            <span className="text-[10px] text-[var(--text-primary)] text-center truncate max-w-[92px] font-medium leading-tight">
+            <span className="text-[10px] text-[var(--text-primary)] text-center truncate max-w-[78px] sm:max-w-[92px] font-medium leading-tight">
               {app.name}
             </span>
           </div>
@@ -347,12 +369,12 @@ const AppLauncher = memo(function AppLauncher() {
         <div
           className="pointer-events-none fixed z-[5000] flex flex-col items-center gap-1"
           style={{
-            left: draggingApp.current.x - 38,
-            top: draggingApp.current.y - 38,
+            left: draggingApp.current.x - dragIconSize / 2,
+            top: draggingApp.current.y - dragIconSize / 2,
             filter: 'drop-shadow(0 18px 28px rgba(0,0,0,0.42))',
           }}
         >
-          <AppIcon appId={draggingApp.appId} size={72} />
+          <AppIcon appId={draggingApp.appId} size={dragIconSize} />
           <span
             className="rounded-full px-2 py-1 text-[10px] font-semibold text-white"
             style={{ background: 'rgba(15,23,42,0.82)', border: '1px solid rgba(255,255,255,0.14)' }}

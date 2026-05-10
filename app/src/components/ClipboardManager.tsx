@@ -41,10 +41,10 @@ const ClipboardManager = memo(function ClipboardManager() {
   };
 
   return (
-    <div className="fixed top-1 z-[210]" style={{ right: 226 }} ref={ref}>
+    <div className="relative shrink-0" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="h-7 px-1.5 rounded-lg flex items-center justify-center hover:bg-[rgba(255,255,255,0.08)] transition-colors"
+        className="h-7 w-7 p-0 rounded-lg flex items-center justify-center hover:bg-[rgba(255,255,255,0.08)] transition-colors"
         title="Universal clipboard"
         aria-label="Open universal clipboard"
       >
@@ -60,7 +60,7 @@ const ClipboardManager = memo(function ClipboardManager() {
         <div
           className="absolute top-full right-0 mt-2 rounded-2xl overflow-hidden"
           style={{
-            width: 320,
+            width: 'min(320px, calc(100vw - 12px))',
             background: 'rgba(17,19,28,0.85)',
             border: '1px solid rgba(255,255,255,0.12)',
             backdropFilter: 'blur(24px) saturate(220%)',

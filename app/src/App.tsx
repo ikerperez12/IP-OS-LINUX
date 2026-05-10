@@ -21,7 +21,6 @@ import DesktopWidgets from '@/components/Widgets';
 import ReactiveWallpaper from '@/components/ReactiveWallpaper';
 import ScreenEffects from '@/components/ScreenEffects';
 import AudioVisualizer from '@/components/AudioVisualizer';
-import ClipboardManager from '@/components/ClipboardManager';
 import SnapAssistOverlay from '@/components/SnapAssistOverlay';
 
 function AppShell() {
@@ -181,7 +180,6 @@ function AppShell() {
           <AudioVisualizer />
 
           {/* Round 7 — productivity */}
-          <ClipboardManager />
           <SnapAssistOverlay />
 
           {/* Alt+Tab switcher — with proper Lucide icons */}

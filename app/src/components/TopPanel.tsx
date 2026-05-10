@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { useOS } from '@/hooks/useOSStore';
 import SystemIcon from './SystemIcon';
 import WorkspaceSwitcher from './WorkspaceSwitcher';
+import ClipboardManager from './ClipboardManager';
 
 type TrayPanel = 'accessibility' | 'keyboard' | 'network' | 'volume' | 'shortcuts' | 'battery' | 'power' | null;
 
@@ -212,11 +213,12 @@ const TopPanel = memo(function TopPanel() {
   const showFullTray = viewportWidth > 520;
   const formattedTime = format(time, compactTopPanel ? 'h:mm a' : 'EEE h:mm a');
   const formattedDate = format(time, 'EEEE, MMMM d, yyyy');
-  const trayButton = (panel: TrayPanel, extra = '') => (
-    `${compactTopPanel ? 'h-7 w-7 p-0' : 'h-7 px-1.5'} rounded-lg transition-all flex items-center justify-center shrink-0 ${extra} ${
+  const trayButton = (panel: TrayPanel, extra = '') => {
+    const sizeClass = panel === 'battery' && !compactTopPanel ? 'h-7 min-w-12 px-1.5' : 'h-7 w-7 p-0';
+    return `${sizeClass} rounded-lg transition-all flex items-center justify-center shrink-0 ${extra} ${
       activePanel === panel ? 'bg-[rgba(124,77,255,0.22)] text-white' : 'hover:bg-[rgba(255,255,255,0.08)]'
-    }`
-  );
+    }`;
+  };
 
   const renderPanel = () => {
     switch (activePanel) {
@@ -328,7 +330,7 @@ const TopPanel = memo(function TopPanel() {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-[200] grid items-center px-2 text-xs font-medium select-none"
+      className="iplinux-top-panel fixed top-0 left-0 right-0 z-[200] grid items-center px-2 text-xs font-medium select-none"
       style={{
         height: 30,
         gridTemplateColumns: 'auto minmax(0, 1fr) auto',
@@ -359,7 +361,8 @@ const TopPanel = memo(function TopPanel() {
         </button>
       </div>
 
-      <div className="flex items-center justify-end gap-0.5 min-w-0 relative" ref={menuRef}>
+      <div className="flex items-center justify-end gap-1 min-w-0 relative" ref={menuRef}>
+        {showFullTray && <ClipboardManager />}
         <a
           href="https://github.com/ikerperez12/IP-OS-LINUX"
           target="_blank"

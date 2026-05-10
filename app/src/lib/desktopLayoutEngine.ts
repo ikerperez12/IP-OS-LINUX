@@ -29,19 +29,25 @@ export const createDesktopGridMetrics = (
   iconScale = 1
 ): DesktopGridMetrics => {
   const isPhone = width <= 640;
-  const isNarrowPhone = width <= 380;
+  const isCompactPhone = width <= 374;
+  const isRegularPhone = width > 374 && width <= 430;
   const isShortPhone = isPhone && height <= 620;
   const scale = isPhone
-    ? Math.min(1.04, Math.max(0.82, iconScale || 1))
+    ? Math.min(1, Math.max(0.8, iconScale || 1))
     : Math.min(1.18, Math.max(0.9, iconScale || 1));
-  const originX = isPhone ? (isNarrowPhone ? 10 : 14) : tabletMode ? 24 : 26;
-  const originY = isPhone ? 14 : tabletMode ? 20 : 18;
-  const cellWidth = Math.round((isPhone ? (isNarrowPhone ? 96 : 108) : tabletMode ? 138 : 126) * scale);
-  const cellHeight = Math.round((isPhone ? (isShortPhone ? 96 : 108) : tabletMode ? 148 : 136) * scale);
-  const itemWidth = Math.round((isPhone ? (isNarrowPhone ? 78 : 88) : tabletMode ? 108 : 98) * scale);
-  const itemHeight = Math.round((isPhone ? (isShortPhone ? 88 : 98) : tabletMode ? 124 : 112) * scale);
-  const tileSize = Math.round((isPhone ? (isNarrowPhone ? 58 : 64) : tabletMode ? 88 : 78) * scale);
-  const iconSize = Math.round((isPhone ? (isNarrowPhone ? 54 : 60) : tabletMode ? 80 : 72) * scale);
+  const phoneProfile = isCompactPhone
+    ? { originX: 8, cellWidth: 84, cellHeight: isShortPhone ? 86 : 92, itemWidth: 72, itemHeight: isShortPhone ? 78 : 84, tileSize: 46, iconSize: 42 }
+    : isRegularPhone
+      ? { originX: 10, cellWidth: 88, cellHeight: isShortPhone ? 90 : 98, itemWidth: 76, itemHeight: isShortPhone ? 82 : 88, tileSize: 50, iconSize: 46 }
+      : { originX: 12, cellWidth: 96, cellHeight: isShortPhone ? 96 : 104, itemWidth: 82, itemHeight: isShortPhone ? 88 : 94, tileSize: 54, iconSize: 50 };
+  const originX = isPhone ? phoneProfile.originX : tabletMode ? 24 : 26;
+  const originY = isPhone ? 12 : tabletMode ? 20 : 18;
+  const cellWidth = Math.round((isPhone ? phoneProfile.cellWidth : tabletMode ? 138 : 126) * scale);
+  const cellHeight = Math.round((isPhone ? phoneProfile.cellHeight : tabletMode ? 148 : 136) * scale);
+  const itemWidth = Math.round((isPhone ? phoneProfile.itemWidth : tabletMode ? 108 : 98) * scale);
+  const itemHeight = Math.round((isPhone ? phoneProfile.itemHeight : tabletMode ? 124 : 112) * scale);
+  const tileSize = Math.round((isPhone ? phoneProfile.tileSize : tabletMode ? 88 : 78) * scale);
+  const iconSize = Math.round((isPhone ? phoneProfile.iconSize : tabletMode ? 80 : 72) * scale);
   const columns = Math.max(1, Math.floor((Math.max(1, width) - originX * 2) / cellWidth));
   const rows = Math.max(1, Math.floor((Math.max(1, height) - originY * 2) / cellHeight));
 

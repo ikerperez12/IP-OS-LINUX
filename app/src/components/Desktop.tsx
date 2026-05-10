@@ -54,6 +54,8 @@ const rectsIntersect = (
 const FolderIcon = memo(function FolderIcon({ icon, size }: { icon: DesktopIcon; size: number }) {
   const children = icon.children || [];
   const previews = children.slice(0, 4);
+  const previewSize = Math.max(13, Math.round(size * 0.28));
+  const badgeSize = Math.max(14, Math.round(size * 0.26));
   return (
     <div
       className="relative flex items-center justify-center overflow-hidden"
@@ -68,12 +70,12 @@ const FolderIcon = memo(function FolderIcon({ icon, size }: { icon: DesktopIcon;
     >
       <div className="absolute inset-1.5 rounded-[18px]" style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)' }} />
       <div
-        className="relative grid grid-cols-2 gap-1.5"
-        style={{ width: size * 0.62, height: size * 0.62 }}
+        className="relative grid grid-cols-2"
+        style={{ width: size * 0.62, height: size * 0.62, gap: Math.max(3, Math.round(size * 0.06)) }}
       >
         {previews.map((child) => (
           <div key={child.id} className="rounded-lg overflow-hidden shadow-sm">
-            <AppIcon appId={child.appId || ''} size={size * 0.28} />
+            <AppIcon appId={child.appId || ''} size={previewSize} />
           </div>
         ))}
         {previews.length === 0 && (
@@ -81,8 +83,17 @@ const FolderIcon = memo(function FolderIcon({ icon, size }: { icon: DesktopIcon;
         )}
       </div>
       <div
-        className="absolute right-1.5 bottom-1.5 min-w-5 h-5 px-1 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-        style={{ background: 'rgba(0,0,0,0.38)', border: '1px solid rgba(255,255,255,0.18)' }}
+        className="absolute rounded-full flex items-center justify-center font-bold text-white"
+        style={{
+          right: Math.max(3, Math.round(size * 0.05)),
+          bottom: Math.max(3, Math.round(size * 0.05)),
+          minWidth: badgeSize,
+          height: badgeSize,
+          padding: '0 3px',
+          fontSize: Math.max(8, Math.round(size * 0.16)),
+          background: 'rgba(0,0,0,0.38)',
+          border: '1px solid rgba(255,255,255,0.18)',
+        }}
       >
         {children.length}
       </div>
@@ -419,9 +430,13 @@ const Desktop = memo(function Desktop() {
   }, [desktopIcons, interaction, metrics]);
 
   const isPhoneViewport = viewport.width <= 640;
+  const isCompactPhoneViewport = viewport.width <= 374;
   const desktopTop = isPhoneViewport ? 34 : 28;
-  const desktopBottom = isPhoneViewport ? 78 : 76;
-  const labelFontSize = isPhoneViewport ? 10 : 11;
+  const desktopBottom = isPhoneViewport ? (isCompactPhoneViewport ? 68 : 72) : 76;
+  const labelFontSize = isPhoneViewport ? (isCompactPhoneViewport ? 10 : 10.5) : 11;
+  const iconHoverClass = isPhoneViewport
+    ? 'flex items-center justify-center'
+    : 'transition-transform duration-200 group-hover:scale-105 group-hover:-translate-y-1 flex items-center justify-center';
 
   return (
     <div
@@ -501,11 +516,13 @@ const Desktop = memo(function Desktop() {
             }}
           >
             <div
-              className="transition-transform duration-200 group-hover:scale-105 group-hover:-translate-y-1 flex items-center justify-center"
+              className={iconHoverClass}
               style={{
                 width: metrics.tileSize,
                 height: metrics.tileSize,
-                borderRadius: Math.max(14, Math.round(metrics.tileSize * 0.24)),
+                minWidth: 48,
+                minHeight: 48,
+                borderRadius: Math.max(12, Math.round(metrics.tileSize * 0.24)),
                 padding: 2,
                 background: icon.isSelected ? 'rgba(124,77,255,0.42)' : 'transparent',
                 boxShadow: icon.isSelected ? '0 0 22px rgba(124,77,255,0.45), inset 0 0 0 1px rgba(255,255,255,0.2)' : 'none',
@@ -521,6 +538,7 @@ const Desktop = memo(function Desktop() {
               style={{
                 maxWidth: metrics.itemWidth,
                 fontSize: labelFontSize,
+                lineHeight: isPhoneViewport ? 1.08 : 1.12,
                 color: '#FFFFFF',
                 textShadow: '0 1px 4px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.72)',
                 background: icon.isSelected ? 'rgba(124,77,255,0.55)' : 'rgba(0,0,0,0.08)',
@@ -602,7 +620,7 @@ const Desktop = memo(function Desktop() {
                 <SystemIcon name="X" size={16} />
               </button>
             </div>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(92px,1fr))] gap-4 p-5 overflow-y-auto custom-scrollbar">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(82px,100%),1fr))] gap-3 p-4 overflow-y-auto custom-scrollbar sm:grid-cols-[repeat(auto-fill,minmax(92px,1fr))] sm:gap-4 sm:p-5">
               {(openFolder.children || []).map((child) => (
                 <button
                   key={child.id}
@@ -614,7 +632,7 @@ const Desktop = memo(function Desktop() {
                     }
                   }}
                 >
-                  <AppIcon appId={child.appId || ''} size={64} />
+                  <AppIcon appId={child.appId || ''} size={isPhoneViewport ? 48 : 64} />
                   <span className="text-[11px] font-semibold text-center leading-tight text-[var(--text-primary)] line-clamp-2">
                     {child.name}
                   </span>

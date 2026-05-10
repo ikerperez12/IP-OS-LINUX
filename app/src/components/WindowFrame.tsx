@@ -74,11 +74,11 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
   const isMaximized = win.state === 'maximized';
   const isMinimized = win.state === 'minimized';
   const isFocused = win.isFocused;
-  const viewportWidth = typeof window === 'undefined' ? win.size.width : window.innerWidth;
-  const viewportHeight = typeof window === 'undefined' ? win.size.height + TOP_PANEL_HEIGHT : window.innerHeight;
+  const viewportWidth = typeof window === 'undefined' ? win.size.width : window.visualViewport?.width || window.innerWidth;
+  const viewportHeight = typeof window === 'undefined' ? win.size.height + TOP_PANEL_HEIGHT : window.visualViewport?.height || window.innerHeight;
   const mobileViewport = viewportWidth <= 760;
   const lockedLayout = isMaximized || mobileViewport;
-  const bottomReserve = mobileViewport ? 132 : 96;
+  const bottomReserve = mobileViewport ? (viewportWidth <= 380 ? 72 : 82) : 96;
   const maxFrameWidth = Math.max(MIN_W, viewportWidth - (mobileViewport ? 0 : 16));
   const maxFrameHeight = Math.max(MIN_H, viewportHeight - TOP_PANEL_HEIGHT - bottomReserve);
   const frameWidth = lockedLayout ? viewportWidth : Math.min(win.size.width, maxFrameWidth);

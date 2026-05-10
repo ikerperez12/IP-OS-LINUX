@@ -30,7 +30,7 @@ const WorkspaceSwitcher = memo(function WorkspaceSwitcher() {
 
   return (
     <div
-      className="flex items-center gap-1 px-1.5 py-1 rounded-lg"
+      className="flex items-center gap-1.5 px-1.5 py-1 rounded-lg"
       style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
       title="Virtual workspaces — Ctrl+Left/Right"
     >
@@ -40,8 +40,8 @@ const WorkspaceSwitcher = memo(function WorkspaceSwitcher() {
           onClick={() => dispatch({ type: 'SET_ACTIVE_WORKSPACE', id: w.id })}
           className="text-[10px] font-semibold rounded-md transition-all"
           style={{
-            width: 18,
-            height: 18,
+            width: 24,
+            height: 24,
             background: state.activeWorkspace === w.id ? 'var(--accent-primary)' : 'transparent',
             color: state.activeWorkspace === w.id ? '#fff' : 'var(--text-secondary)',
           }}

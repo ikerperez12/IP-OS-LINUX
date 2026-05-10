@@ -59,6 +59,7 @@ const Dock = memo(function Dock() {
   const openUnpinned = dockItems.filter((d) => !d.isPinned && d.isOpen && !state.disabledAppIds.includes(d.appId));
   const phoneViewport = viewportWidth <= 640;
   const narrowPhoneViewport = viewportWidth <= 380;
+  const compactPhoneViewport = viewportWidth <= 430;
   const narrowDockPriority = new Set(['filemanager', 'terminal', 'settings', 'browser', 'musicplayer']);
   const visiblePinnedItems = narrowPhoneViewport
     ? pinnedItems.filter((item) => narrowDockPriority.has(item.appId) || item.isOpen)
@@ -68,7 +69,7 @@ const Dock = memo(function Dock() {
     ? Math.max(42, state.dockPreferences.size - 8)
     : state.dockPreferences.size;
   const iconSize = phoneViewport
-    ? Math.min(narrowPhoneViewport ? 40 : 44, baseSize)
+    ? Math.min(narrowPhoneViewport ? 34 : compactPhoneViewport ? 38 : 42, baseSize)
     : state.uiPreferences.tabletMode
       ? Math.max(58, baseSize)
       : baseSize;
@@ -118,7 +119,7 @@ const Dock = memo(function Dock() {
           transition: isBouncing
             ? 'transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)'
             : 'transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1)',
-          width: iconSize + (phoneViewport ? 2 : 4),
+          width: phoneViewport ? Math.max(42, iconSize + 4) : iconSize + 4,
         }}
       >
         {/* Tooltip */}
@@ -146,6 +147,8 @@ const Dock = memo(function Dock() {
           style={{
             borderRadius: 14,
             padding: 2,
+            minWidth: phoneViewport ? 42 : undefined,
+            minHeight: phoneViewport ? 42 : undefined,
             opacity: isTrash ? 0.8 : 1,
             filter: hoveredIndex === globalIndex ? 'brightness(1.15)' : 'brightness(1)',
           }}
@@ -184,12 +187,12 @@ const Dock = memo(function Dock() {
       className="iplinux-dock fixed left-1/2 -translate-x-1/2 z-[150] flex items-end max-w-[calc(100vw-10px)]"
       style={{
         bottom: 'max(6px, env(safe-area-inset-bottom))',
-        gap: phoneViewport ? 2 : 4,
-        padding: phoneViewport ? '7px 8px 8px' : '8px 12px 8px',
+        gap: phoneViewport ? (narrowPhoneViewport ? 1 : 2) : 4,
+        padding: phoneViewport ? (narrowPhoneViewport ? '6px 7px 7px' : '7px 8px 8px') : '8px 12px 8px',
         background: `rgba(20, 20, 25, ${state.dockPreferences.transparency})`,
         backdropFilter: `blur(${state.uiPreferences.blurIntensity}px) saturate(220%)`,
         WebkitBackdropFilter: `blur(${state.uiPreferences.blurIntensity}px) saturate(220%)`,
-        borderRadius: phoneViewport ? 18 : 20,
+        borderRadius: phoneViewport ? 16 : 20,
         border: '1px solid rgba(255,255,255,0.08)',
         boxShadow: '0 18px 54px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.1)',
         animation: 'dockSlideUp 400ms cubic-bezier(0, 0, 0.2, 1)',
@@ -215,12 +218,15 @@ const Dock = memo(function Dock() {
             <div
               className="flex items-center justify-center"
               style={{
-                width: launcherSize, height: launcherSize,
-              borderRadius: 15,
-              background: state.appLauncherOpen
-                ? 'linear-gradient(145deg, #7C4DFF, #311B92)'
-                : 'rgba(255,255,255,0.08)',
-            }}
+                width: launcherSize,
+                height: launcherSize,
+                minWidth: phoneViewport ? 42 : undefined,
+                minHeight: phoneViewport ? 42 : undefined,
+                borderRadius: phoneViewport ? 12 : 15,
+                background: state.appLauncherOpen
+                  ? 'linear-gradient(145deg, #7C4DFF, #311B92)'
+                  : 'rgba(255,255,255,0.08)',
+              }}
           >
             <SystemIcon name="LayoutGrid" size={Math.round(launcherSize * 0.48)} style={{ color: 'rgba(255,255,255,0.9)' }} />
           </div>
