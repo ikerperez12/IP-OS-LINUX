@@ -141,7 +141,7 @@ function AppShell() {
   const showDesktop = bootComplete && auth.isAuthenticated;
 
   return (
-    <div className={state.theme.mode === 'light' ? 'light' : ''} style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
+    <div className={state.theme.mode === 'light' ? 'light' : ''} style={{ width: '100vw', height: '100dvh', minHeight: '100vh', overflow: 'hidden' }}>
       {/* Boot Sequence */}
       {showBoot && <BootSequence onComplete={handleBootComplete} />}
 

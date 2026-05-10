@@ -120,8 +120,17 @@ const Desktop = memo(function Desktop() {
       });
     };
     measure();
+    const vv = window.visualViewport;
     window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    vv?.addEventListener('resize', measure);
+    vv?.addEventListener('scroll', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+      vv?.removeEventListener('resize', measure);
+      vv?.removeEventListener('scroll', measure);
+    };
   }, []);
 
   const metrics = useMemo(
@@ -409,11 +418,16 @@ const Desktop = memo(function Desktop() {
     };
   }, [desktopIcons, interaction, metrics]);
 
+  const isPhoneViewport = viewport.width <= 640;
+  const desktopTop = isPhoneViewport ? 34 : 28;
+  const desktopBottom = isPhoneViewport ? 78 : 76;
+  const labelFontSize = isPhoneViewport ? 10 : 11;
+
   return (
     <div
       ref={desktopRef}
       className="fixed inset-0 z-10 outline-none overflow-hidden"
-      style={{ top: 28, bottom: 76 }}
+      style={{ top: desktopTop, bottom: desktopBottom }}
       tabIndex={-1}
       onMouseDown={handleDesktopMouseDown}
       onMouseMove={handleMouseMove}
@@ -491,7 +505,7 @@ const Desktop = memo(function Desktop() {
               style={{
                 width: metrics.tileSize,
                 height: metrics.tileSize,
-                borderRadius: 20,
+                borderRadius: Math.max(14, Math.round(metrics.tileSize * 0.24)),
                 padding: 2,
                 background: icon.isSelected ? 'rgba(124,77,255,0.42)' : 'transparent',
                 boxShadow: icon.isSelected ? '0 0 22px rgba(124,77,255,0.45), inset 0 0 0 1px rgba(255,255,255,0.2)' : 'none',
@@ -503,9 +517,10 @@ const Desktop = memo(function Desktop() {
             </div>
 
             <span
-              className="text-[11px] font-semibold text-center px-1.5 py-0.5 rounded-md leading-tight"
+              className="font-semibold text-center px-1 py-0.5 rounded-md leading-tight"
               style={{
                 maxWidth: metrics.itemWidth,
+                fontSize: labelFontSize,
                 color: '#FFFFFF',
                 textShadow: '0 1px 4px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.72)',
                 background: icon.isSelected ? 'rgba(124,77,255,0.55)' : 'rgba(0,0,0,0.08)',

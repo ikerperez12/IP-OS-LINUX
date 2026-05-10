@@ -41,7 +41,7 @@ const PanelShell = ({
   <div
     className="absolute top-full right-0 mt-2 rounded-2xl z-[5000] overflow-hidden"
     style={{
-      width: 292,
+      width: 'min(292px, calc(100vw - 12px))',
       background: 'rgba(17,19,28,0.82)',
       boxShadow: '0 24px 70px rgba(0,0,0,0.46), inset 0 1px 0 rgba(255,255,255,0.09)',
       border: '1px solid rgba(255,255,255,0.12)',
@@ -63,7 +63,7 @@ const ShortcutsPanel = ({ onClose }: { onClose: () => void }) => {
     <div
       className="absolute top-full right-0 mt-2 rounded-2xl z-[5000] overflow-hidden"
       style={{
-        width: 360,
+        width: 'min(360px, calc(100vw - 12px))',
         background: 'rgba(17,19,28,0.85)',
         boxShadow: '0 28px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.09)',
         border: '1px solid rgba(255,255,255,0.12)',
@@ -158,11 +158,26 @@ const TopPanel = memo(function TopPanel() {
   const { state, dispatch } = useOS();
   const [time, setTime] = useState(new Date());
   const [activePanel, setActivePanel] = useState<TrayPanel>(null);
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const measure = () => setViewportWidth(window.visualViewport?.width || window.innerWidth);
+    measure();
+    const vv = window.visualViewport;
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    vv?.addEventListener('resize', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+      vv?.removeEventListener('resize', measure);
+    };
   }, []);
 
   useEffect(() => {
@@ -191,10 +206,14 @@ const TopPanel = memo(function TopPanel() {
     [dispatch]
   );
 
-  const formattedTime = format(time, 'EEE h:mm a');
+  const compactTopPanel = viewportWidth <= 560;
+  const veryCompactTopPanel = viewportWidth <= 380;
+  const showWorkspaceSwitcher = viewportWidth > 680;
+  const showFullTray = viewportWidth > 520;
+  const formattedTime = format(time, compactTopPanel ? 'h:mm a' : 'EEE h:mm a');
   const formattedDate = format(time, 'EEEE, MMMM d, yyyy');
   const trayButton = (panel: TrayPanel, extra = '') => (
-    `h-7 px-1.5 rounded-lg transition-all flex items-center justify-center shrink-0 ${extra} ${
+    `${compactTopPanel ? 'h-7 w-7 p-0' : 'h-7 px-1.5'} rounded-lg transition-all flex items-center justify-center shrink-0 ${extra} ${
       activePanel === panel ? 'bg-[rgba(124,77,255,0.22)] text-white' : 'hover:bg-[rgba(255,255,255,0.08)]'
     }`
   );
@@ -309,9 +328,11 @@ const TopPanel = memo(function TopPanel() {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-[200] flex items-center justify-between px-2 text-xs font-medium select-none"
+      className="fixed top-0 left-0 right-0 z-[200] grid items-center px-2 text-xs font-medium select-none"
       style={{
         height: 30,
+        gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+        columnGap: compactTopPanel ? 4 : 10,
         color: 'var(--text-primary)',
         background: state.systemControls.highContrast
           ? 'rgba(5,6,12,0.92)'
@@ -322,15 +343,15 @@ const TopPanel = memo(function TopPanel() {
         boxShadow: '0 8px 32px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.1)',
       }}
     >
-      <div className="flex-1 flex items-center justify-start min-w-0 gap-2">
-        <button onClick={handleActivities} className="h-7 px-3 rounded-lg hover:bg-[rgba(255,255,255,0.08)] transition-colors text-xs font-semibold" aria-label="Open activities and applications">
-          Activities
+      <div className="flex items-center justify-start min-w-0 gap-1.5">
+        <button onClick={handleActivities} className={`${compactTopPanel ? 'h-7 px-2' : 'h-7 px-3'} rounded-lg hover:bg-[rgba(255,255,255,0.08)] transition-colors text-xs font-semibold`} aria-label="Open activities and applications">
+          {veryCompactTopPanel ? 'Apps' : 'Activities'}
         </button>
-        <WorkspaceSwitcher />
+        {showWorkspaceSwitcher && <WorkspaceSwitcher />}
       </div>
 
-      <div className="flex-1 flex justify-center min-w-0">
-        <button onClick={handleClockClick} className="h-7 px-3 rounded-lg hover:bg-[rgba(255,255,255,0.08)] transition-colors text-xs font-semibold group relative flex items-center justify-center" aria-label={`Open calendar and notifications, ${formattedDate}`}>
+      <div className="flex justify-center min-w-0 px-1">
+        <button onClick={handleClockClick} className={`${compactTopPanel ? 'h-7 px-1.5 text-[11px]' : 'h-7 px-3 text-xs'} min-w-0 max-w-full rounded-lg hover:bg-[rgba(255,255,255,0.08)] transition-colors font-semibold group relative flex items-center justify-center`} aria-label={`Open calendar and notifications, ${formattedDate}`}>
           <span className="truncate">{formattedTime}</span>
           <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 rounded-xl bg-[rgba(17,19,28,0.88)] text-[var(--text-primary)] text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[5000] border border-white/10">
             {formattedDate}
@@ -338,12 +359,12 @@ const TopPanel = memo(function TopPanel() {
         </button>
       </div>
 
-      <div className="flex-1 flex items-center justify-end gap-1 min-w-0 relative" ref={menuRef}>
+      <div className="flex items-center justify-end gap-0.5 min-w-0 relative" ref={menuRef}>
         <a
           href="https://github.com/ikerperez12/IP-OS-LINUX"
           target="_blank"
           rel="noopener noreferrer"
-          className="h-7 w-7 rounded-full transition-all flex items-center justify-center shrink-0 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(124,77,255,0.75)]"
+          className={`${compactTopPanel ? 'h-6 w-6' : 'h-7 w-7'} rounded-full transition-all flex items-center justify-center shrink-0 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(124,77,255,0.75)]`}
           title="Open IP Linux repository"
           aria-label="Open IP Linux GitHub repository"
           style={{
@@ -354,20 +375,20 @@ const TopPanel = memo(function TopPanel() {
             WebkitBackdropFilter: 'blur(18px) saturate(180%)',
           }}
         >
-          <SystemIcon name="GitHub" size={14} className="text-white drop-shadow" />
+          <SystemIcon name="GitHub" size={compactTopPanel ? 12 : 14} className="text-white drop-shadow" />
         </a>
-        <button className={trayButton('accessibility')} title="Accessibility" aria-label="Open accessibility controls" onClick={() => setActivePanel(activePanel === 'accessibility' ? null : 'accessibility')}>
+        {showFullTray && <button className={trayButton('accessibility')} title="Accessibility" aria-label="Open accessibility controls" onClick={() => setActivePanel(activePanel === 'accessibility' ? null : 'accessibility')}>
           <SystemIcon name="Accessibility" size={14} />
-        </button>
-        <button className={trayButton('keyboard')} title="Keyboard" aria-label="Open keyboard controls" onClick={() => setActivePanel(activePanel === 'keyboard' ? null : 'keyboard')}>
+        </button>}
+        {showFullTray && <button className={trayButton('keyboard')} title="Keyboard" aria-label="Open keyboard controls" onClick={() => setActivePanel(activePanel === 'keyboard' ? null : 'keyboard')}>
           <SystemIcon name="Keyboard" size={14} />
-        </button>
-        <button className={trayButton('network')} title="Network" aria-label="Open network controls" onClick={() => setActivePanel(activePanel === 'network' ? null : 'network')}>
+        </button>}
+        {showFullTray && <button className={trayButton('network')} title="Network" aria-label="Open network controls" onClick={() => setActivePanel(activePanel === 'network' ? null : 'network')}>
           <SystemIcon name={state.systemControls.networkEnabled ? 'Wifi' : 'WifiOff'} size={14} />
-        </button>
-        <button className={trayButton('volume')} title="Volume" aria-label="Open volume controls" onClick={() => setActivePanel(activePanel === 'volume' ? null : 'volume')}>
+        </button>}
+        {showFullTray && <button className={trayButton('volume')} title="Volume" aria-label="Open volume controls" onClick={() => setActivePanel(activePanel === 'volume' ? null : 'volume')}>
           <SystemIcon name={state.systemControls.muted ? 'VolumeX' : 'Volume2'} size={14} />
-        </button>
+        </button>}
         <button
           className={trayButton('shortcuts', 'relative')}
           title="Keyboard shortcuts"
@@ -375,7 +396,7 @@ const TopPanel = memo(function TopPanel() {
           aria-label="Open keyboard shortcuts"
         >
           <span
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-transform"
+            className={`${compactTopPanel ? 'w-6 h-6' : 'w-7 h-7'} rounded-full flex items-center justify-center transition-transform`}
             style={{
               background: activePanel === 'shortcuts'
                 ? 'linear-gradient(135deg, #7C4DFF, #4A148C)'
@@ -387,12 +408,12 @@ const TopPanel = memo(function TopPanel() {
               animation: 'robotFloat 3.6s ease-in-out infinite',
             }}
           >
-            <SystemIcon name="Robot" size={15} className="text-white drop-shadow" />
+            <SystemIcon name="Robot" size={compactTopPanel ? 13 : 15} className="text-white drop-shadow" />
           </span>
         </button>
         <button className={trayButton('battery', 'gap-1')} title="Battery" aria-label="Open battery controls" onClick={() => setActivePanel(activePanel === 'battery' ? null : 'battery')}>
           <SystemIcon name="Battery" size={14} />
-          <span className="text-[10px] shrink-0">100%</span>
+          {!compactTopPanel && <span className="text-[10px] shrink-0">100%</span>}
         </button>
         <button className={trayButton('power')} title="Power menu" aria-label="Open power menu" onClick={() => setActivePanel(activePanel === 'power' ? null : 'power')}>
           <SystemIcon name="Power" size={14} />

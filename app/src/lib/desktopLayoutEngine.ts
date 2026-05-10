@@ -28,15 +28,20 @@ export const createDesktopGridMetrics = (
   tabletMode = false,
   iconScale = 1
 ): DesktopGridMetrics => {
-  const scale = Math.min(1.18, Math.max(0.9, iconScale || 1));
-  const originX = tabletMode ? 24 : 26;
-  const originY = tabletMode ? 20 : 18;
-  const cellWidth = Math.round((tabletMode ? 138 : 126) * scale);
-  const cellHeight = Math.round((tabletMode ? 148 : 136) * scale);
-  const itemWidth = Math.round((tabletMode ? 108 : 98) * scale);
-  const itemHeight = Math.round((tabletMode ? 124 : 112) * scale);
-  const tileSize = Math.round((tabletMode ? 88 : 78) * scale);
-  const iconSize = Math.round((tabletMode ? 80 : 72) * scale);
+  const isPhone = width <= 640;
+  const isNarrowPhone = width <= 380;
+  const isShortPhone = isPhone && height <= 620;
+  const scale = isPhone
+    ? Math.min(1.04, Math.max(0.82, iconScale || 1))
+    : Math.min(1.18, Math.max(0.9, iconScale || 1));
+  const originX = isPhone ? (isNarrowPhone ? 10 : 14) : tabletMode ? 24 : 26;
+  const originY = isPhone ? 14 : tabletMode ? 20 : 18;
+  const cellWidth = Math.round((isPhone ? (isNarrowPhone ? 96 : 108) : tabletMode ? 138 : 126) * scale);
+  const cellHeight = Math.round((isPhone ? (isShortPhone ? 96 : 108) : tabletMode ? 148 : 136) * scale);
+  const itemWidth = Math.round((isPhone ? (isNarrowPhone ? 78 : 88) : tabletMode ? 108 : 98) * scale);
+  const itemHeight = Math.round((isPhone ? (isShortPhone ? 88 : 98) : tabletMode ? 124 : 112) * scale);
+  const tileSize = Math.round((isPhone ? (isNarrowPhone ? 58 : 64) : tabletMode ? 88 : 78) * scale);
+  const iconSize = Math.round((isPhone ? (isNarrowPhone ? 54 : 60) : tabletMode ? 80 : 72) * scale);
   const columns = Math.max(1, Math.floor((Math.max(1, width) - originX * 2) / cellWidth));
   const rows = Math.max(1, Math.floor((Math.max(1, height) - originY * 2) / cellHeight));
 

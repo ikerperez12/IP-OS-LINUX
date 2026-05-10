@@ -13,6 +13,7 @@ const Dock = memo(function Dock() {
   const { dockItems } = state;
   const [bouncingItems, setBouncingItems] = useState<Set<string>>(new Set());
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
 
   // Bounce animation cleanup
   useEffect(() => {
@@ -24,6 +25,20 @@ const Dock = memo(function Dock() {
       return () => clearTimeout(timer);
     }
   }, [dockItems, dispatch]);
+
+  useEffect(() => {
+    const measure = () => setViewportWidth(window.visualViewport?.width || window.innerWidth);
+    measure();
+    const vv = window.visualViewport;
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    vv?.addEventListener('resize', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+      vv?.removeEventListener('resize', measure);
+    };
+  }, []);
 
   const handleAppClick = useCallback(
     (appId: string) => {
@@ -42,14 +57,24 @@ const Dock = memo(function Dock() {
 
   const pinnedItems = dockItems.filter((d) => d.isPinned && !state.disabledAppIds.includes(d.appId));
   const openUnpinned = dockItems.filter((d) => !d.isPinned && d.isOpen && !state.disabledAppIds.includes(d.appId));
-  const allItems = [...pinnedItems, ...openUnpinned];
+  const phoneViewport = viewportWidth <= 640;
+  const narrowPhoneViewport = viewportWidth <= 380;
+  const narrowDockPriority = new Set(['filemanager', 'terminal', 'settings', 'browser', 'musicplayer']);
+  const visiblePinnedItems = narrowPhoneViewport
+    ? pinnedItems.filter((item) => narrowDockPriority.has(item.appId) || item.isOpen)
+    : pinnedItems;
+  const allItems = [...visiblePinnedItems, ...openUnpinned];
   const baseSize = state.dockPreferences.compact
     ? Math.max(42, state.dockPreferences.size - 8)
     : state.dockPreferences.size;
-  const iconSize = state.uiPreferences.tabletMode ? Math.max(58, baseSize) : baseSize;
+  const iconSize = phoneViewport
+    ? Math.min(narrowPhoneViewport ? 40 : 44, baseSize)
+    : state.uiPreferences.tabletMode
+      ? Math.max(58, baseSize)
+      : baseSize;
   const launcherSize = iconSize;
-  const maxScale = Math.max(1, state.dockPreferences.magnification);
-  const compactViewport = state.uiPreferences.tabletMode || (typeof window !== 'undefined' && window.innerWidth <= 700);
+  const compactViewport = state.uiPreferences.tabletMode || viewportWidth <= 700;
+  const maxScale = phoneViewport ? 1 : Math.max(1, state.dockPreferences.magnification);
 
   // Magnification scale calculation
   const getScale = (index: number) => {
@@ -93,7 +118,7 @@ const Dock = memo(function Dock() {
           transition: isBouncing
             ? 'transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)'
             : 'transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1)',
-          width: iconSize + 4,
+          width: iconSize + (phoneViewport ? 2 : 4),
         }}
       >
         {/* Tooltip */}
@@ -156,12 +181,15 @@ const Dock = memo(function Dock() {
 
   return (
     <div
-      className="iplinux-dock fixed bottom-2 left-1/2 -translate-x-1/2 z-[150] flex items-end gap-1 px-3 pb-2 pt-2 max-w-[calc(100vw-12px)]"
+      className="iplinux-dock fixed left-1/2 -translate-x-1/2 z-[150] flex items-end max-w-[calc(100vw-10px)]"
       style={{
+        bottom: 'max(6px, env(safe-area-inset-bottom))',
+        gap: phoneViewport ? 2 : 4,
+        padding: phoneViewport ? '7px 8px 8px' : '8px 12px 8px',
         background: `rgba(20, 20, 25, ${state.dockPreferences.transparency})`,
         backdropFilter: `blur(${state.uiPreferences.blurIntensity}px) saturate(220%)`,
         WebkitBackdropFilter: `blur(${state.uiPreferences.blurIntensity}px) saturate(220%)`,
-        borderRadius: 20,
+        borderRadius: phoneViewport ? 18 : 20,
         border: '1px solid rgba(255,255,255,0.08)',
         boxShadow: '0 18px 54px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.1)',
         animation: 'dockSlideUp 400ms cubic-bezier(0, 0, 0.2, 1)',
@@ -208,7 +236,7 @@ const Dock = memo(function Dock() {
       {/* Pinned + open unpinned apps */}
       {allItems.map((item, i) => (
         <span key={item.appId}>
-          {i === pinnedItems.length && openUnpinned.length > 0 && (
+          {i === visiblePinnedItems.length && openUnpinned.length > 0 && (
             <div
               className="mx-1 shrink-0 self-center inline-block"
               style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.08)', borderRadius: 1 }}
@@ -219,13 +247,15 @@ const Dock = memo(function Dock() {
       ))}
 
       {/* Separator */}
-      <div
-        className="mx-1 shrink-0 self-center"
-        style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.08)', borderRadius: 1 }}
-      />
+      {!narrowPhoneViewport && (
+        <div
+          className="mx-1 shrink-0 self-center"
+          style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.08)', borderRadius: 1 }}
+        />
+      )}
 
       {/* Trash */}
-      {renderDockIcon('trash', -1, true)}
+      {!narrowPhoneViewport && renderDockIcon('trash', -1, true)}
 
       <style>{`
         @keyframes dockSlideUp {
