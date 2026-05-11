@@ -121,7 +121,7 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
 
   // ---- Resize ----
   const handleResizeMouseDown = useCallback(
-    (edge: string) => (e: React.MouseEvent<HTMLDivElement>) => {
+    (edge: string) => (e: React.MouseEvent<HTMLElement>) => {
       if (lockedLayout) return;
       if (!edge) return;
       e.preventDefault();
@@ -281,6 +281,7 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
         overflow: 'hidden',
       }}
       onMouseDown={handleMouseDown}
+      role="presentation"
     >
       {state.uiPreferences.edgeSheen && (
         <div
@@ -295,14 +296,14 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
       )}
       {!lockedLayout && (
         <div aria-hidden="true" className="absolute inset-0 z-50 pointer-events-none">
-          <div onMouseDown={handleResizeMouseDown('n')} style={{ position: 'absolute', top: 0, left: RESIZE_HANDLE * 2, right: RESIZE_HANDLE * 2, height: RESIZE_HANDLE, cursor: 'n-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
-          <div onMouseDown={handleResizeMouseDown('s')} style={{ position: 'absolute', bottom: 0, left: RESIZE_HANDLE * 2, right: RESIZE_HANDLE * 2, height: RESIZE_HANDLE + 4, cursor: 's-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
-          <div onMouseDown={handleResizeMouseDown('w')} style={{ position: 'absolute', left: 0, top: RESIZE_HANDLE * 2, bottom: RESIZE_HANDLE * 2, width: RESIZE_HANDLE, cursor: 'w-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
-          <div onMouseDown={handleResizeMouseDown('e')} style={{ position: 'absolute', right: 0, top: RESIZE_HANDLE * 2, bottom: RESIZE_HANDLE * 2, width: RESIZE_HANDLE, cursor: 'e-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
-          <div onMouseDown={handleResizeMouseDown('nw')} style={{ position: 'absolute', top: 0, left: 0, width: RESIZE_HANDLE * 2, height: RESIZE_HANDLE * 2, cursor: 'nw-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
-          <div onMouseDown={handleResizeMouseDown('ne')} style={{ position: 'absolute', top: 0, right: 0, width: RESIZE_HANDLE * 2, height: RESIZE_HANDLE * 2, cursor: 'ne-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
-          <div onMouseDown={handleResizeMouseDown('sw')} style={{ position: 'absolute', bottom: 0, left: 0, width: RESIZE_HANDLE * 2, height: RESIZE_HANDLE * 2, cursor: 'sw-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
-          <div onMouseDown={handleResizeMouseDown('se')} style={{ position: 'absolute', bottom: 0, right: 0, width: RESIZE_HANDLE * 2.5, height: RESIZE_HANDLE * 2.5, cursor: 'se-resize', pointerEvents: isDragging ? 'none' : 'auto' }} />
+          <button type="button" tabIndex={-1} aria-hidden="true" onMouseDown={handleResizeMouseDown('n')} style={{ position: 'absolute', top: 0, left: RESIZE_HANDLE * 2, right: RESIZE_HANDLE * 2, height: RESIZE_HANDLE, cursor: 'n-resize', pointerEvents: isDragging ? 'none' : 'auto', border: 0, padding: 0, margin: 0, background: 'transparent', appearance: 'none' }} />
+          <button type="button" tabIndex={-1} aria-hidden="true" onMouseDown={handleResizeMouseDown('s')} style={{ position: 'absolute', bottom: 0, left: RESIZE_HANDLE * 2, right: RESIZE_HANDLE * 2, height: RESIZE_HANDLE + 4, cursor: 's-resize', pointerEvents: isDragging ? 'none' : 'auto', border: 0, padding: 0, margin: 0, background: 'transparent', appearance: 'none' }} />
+          <button type="button" tabIndex={-1} aria-hidden="true" onMouseDown={handleResizeMouseDown('w')} style={{ position: 'absolute', left: 0, top: RESIZE_HANDLE * 2, bottom: RESIZE_HANDLE * 2, width: RESIZE_HANDLE, cursor: 'w-resize', pointerEvents: isDragging ? 'none' : 'auto', border: 0, padding: 0, margin: 0, background: 'transparent', appearance: 'none' }} />
+          <button type="button" tabIndex={-1} aria-hidden="true" onMouseDown={handleResizeMouseDown('e')} style={{ position: 'absolute', right: 0, top: RESIZE_HANDLE * 2, bottom: RESIZE_HANDLE * 2, width: RESIZE_HANDLE, cursor: 'e-resize', pointerEvents: isDragging ? 'none' : 'auto', border: 0, padding: 0, margin: 0, background: 'transparent', appearance: 'none' }} />
+          <button type="button" tabIndex={-1} aria-hidden="true" onMouseDown={handleResizeMouseDown('nw')} style={{ position: 'absolute', top: 0, left: 0, width: RESIZE_HANDLE * 2, height: RESIZE_HANDLE * 2, cursor: 'nw-resize', pointerEvents: isDragging ? 'none' : 'auto', border: 0, padding: 0, margin: 0, background: 'transparent', appearance: 'none' }} />
+          <button type="button" tabIndex={-1} aria-hidden="true" onMouseDown={handleResizeMouseDown('ne')} style={{ position: 'absolute', top: 0, right: 0, width: RESIZE_HANDLE * 2, height: RESIZE_HANDLE * 2, cursor: 'ne-resize', pointerEvents: isDragging ? 'none' : 'auto', border: 0, padding: 0, margin: 0, background: 'transparent', appearance: 'none' }} />
+          <button type="button" tabIndex={-1} aria-hidden="true" onMouseDown={handleResizeMouseDown('sw')} style={{ position: 'absolute', bottom: 0, left: 0, width: RESIZE_HANDLE * 2, height: RESIZE_HANDLE * 2, cursor: 'sw-resize', pointerEvents: isDragging ? 'none' : 'auto', border: 0, padding: 0, margin: 0, background: 'transparent', appearance: 'none' }} />
+          <button type="button" tabIndex={-1} aria-hidden="true" onMouseDown={handleResizeMouseDown('se')} style={{ position: 'absolute', bottom: 0, right: 0, width: RESIZE_HANDLE * 2.5, height: RESIZE_HANDLE * 2.5, cursor: 'se-resize', pointerEvents: isDragging ? 'none' : 'auto', border: 0, padding: 0, margin: 0, background: 'transparent', appearance: 'none' }} />
           <div
             className="absolute bottom-1.5 right-1.5 h-3 w-3 rounded-sm opacity-45"
             style={{
@@ -331,6 +332,7 @@ const WindowFrame = memo(function WindowFrame({ window: win, children }: WindowF
         }}
         onMouseDown={handleTitleMouseDown}
         onDoubleClick={handleDoubleClickTitle}
+        role="presentation"
       >
         {/* Left: Traffic light buttons */}
         <div className="traffic-group flex items-center gap-[7px] pl-4 pr-3 relative z-[60]">

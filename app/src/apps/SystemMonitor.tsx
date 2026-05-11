@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Search, Activity, Cpu, HardDrive, Wifi, XCircle } from 'lucide-react';
 
 type Tab = 'processes' | 'resources' | 'disks';
+type ProcessSortKey = 'cpu' | 'memory' | 'name' | 'pid';
 
 interface Process {
   pid: number;
@@ -81,11 +82,30 @@ const LineChart: React.FC<{ data: number[]; color: string; maxValue?: number; fi
   );
 };
 
+interface SortHeaderProps {
+  label: string;
+  col: ProcessSortKey;
+  sortBy: ProcessSortKey;
+  sortDir: 'asc' | 'desc';
+  onSort: (col: ProcessSortKey) => void;
+}
+
+const SortHeader: React.FC<SortHeaderProps> = ({ label, col, sortBy, sortDir, onSort }) => (
+  <button
+    onClick={() => onSort(col)}
+    className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+    aria-label={`Sort processes by ${label}`}
+  >
+    {label}
+    {sortBy === col && <span className="text-[var(--accent-primary)]">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+  </button>
+);
+
 const SystemMonitor: React.FC = () => {
   const [tab, setTab] = useState<Tab>('processes');
   const [processes, setProcesses] = useState<Process[]>(INITIAL_PROCESSES);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'cpu' | 'memory' | 'name' | 'pid'>('cpu');
+  const [sortBy, setSortBy] = useState<ProcessSortKey>('cpu');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [selectedPid, setSelectedPid] = useState<number | null>(null);
 
@@ -136,7 +156,7 @@ const SystemMonitor: React.FC = () => {
     return filtered;
   }, [processes, searchQuery, sortBy, sortDir]);
 
-  const handleSort = (col: typeof sortBy) => {
+  const handleSort = (col: ProcessSortKey) => {
     if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortBy(col); setSortDir('desc'); }
   };
@@ -145,16 +165,6 @@ const SystemMonitor: React.FC = () => {
     setProcesses(prev => prev.filter(p => p.pid !== pid));
     setSelectedPid(null);
   };
-
-  const SortHeader: React.FC<{ label: string; col: typeof sortBy }> = ({ label, col }) => (
-    <button
-      onClick={() => handleSort(col)}
-      className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-    >
-      {label}
-      {sortBy === col && <span className="text-[var(--accent-primary)]">{sortDir === 'asc' ? '↑' : '↓'}</span>}
-    </button>
-  );
 
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--bg-window)' }}>
@@ -212,10 +222,10 @@ const SystemMonitor: React.FC = () => {
             <table className="w-full">
               <thead className="sticky top-0" style={{ background: 'var(--bg-titlebar)' }}>
                 <tr>
-                  <th className="text-left px-3 py-2"><SortHeader label="Name" col="name" /></th>
-                  <th className="text-left px-3 py-2"><SortHeader label="PID" col="pid" /></th>
-                  <th className="text-left px-3 py-2"><SortHeader label="CPU%" col="cpu" /></th>
-                  <th className="text-left px-3 py-2"><SortHeader label="Memory" col="memory" /></th>
+                  <th className="text-left px-3 py-2"><SortHeader label="Name" col="name" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} /></th>
+                  <th className="text-left px-3 py-2"><SortHeader label="PID" col="pid" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} /></th>
+                  <th className="text-left px-3 py-2"><SortHeader label="CPU%" col="cpu" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} /></th>
+                  <th className="text-left px-3 py-2"><SortHeader label="Memory" col="memory" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} /></th>
                   <th className="text-left px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Status</th>
                   <th className="text-left px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">User</th>
                 </tr>

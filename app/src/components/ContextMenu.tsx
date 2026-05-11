@@ -45,6 +45,11 @@ const ContextMenu = memo(function ContextMenu() {
     <div
       ref={menuRef}
       className="fixed z-[4000] py-1.5 select-none"
+      role="menu"
+      aria-label="Context menu"
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') dispatch({ type: 'HIDE_CONTEXT_MENU' });
+      }}
       style={{
         left: x,
         top: y,

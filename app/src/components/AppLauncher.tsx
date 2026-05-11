@@ -32,7 +32,8 @@ const AppLauncher = memo(function AppLauncher() {
   useEffect(() => {
     if (appLauncherOpen) {
       setSearchQuery('');
-      setTimeout(() => inputRef.current?.focus(), 100);
+      const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 100);
+      return () => window.clearTimeout(focusTimer);
     }
   }, [appLauncherOpen]);
 
@@ -183,6 +184,12 @@ const AppLauncher = memo(function AppLauncher() {
       onClick={(e) => {
         if (e.target === e.currentTarget) dispatch({ type: 'SET_APP_LAUNCHER', open: false });
       }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') dispatch({ type: 'SET_APP_LAUNCHER', open: false });
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Application launcher"
     >
       {/* Search bar */}
       <div

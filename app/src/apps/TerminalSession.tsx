@@ -366,6 +366,11 @@ export default function TerminalSession() {
         fontFamily: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
       }}
       onClick={handleTerminalClick}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') handleTerminalClick();
+      }}
+      role="application"
+      aria-label="Terminal session"
     >
       {/* Terminal output */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 custom-scrollbar">
