@@ -51,10 +51,6 @@ const Dock = memo(function Dock() {
     dispatch({ type: 'TOGGLE_APP_LAUNCHER' });
   }, [dispatch]);
 
-  const handleTrashClick = useCallback(() => {
-    dispatch({ type: 'OPEN_WINDOW', appId: 'filemanager' });
-  }, [dispatch]);
-
   const pinnedItems = dockItems.filter((d) => d.isPinned && !state.disabledAppIds.includes(d.appId));
   const openUnpinned = dockItems.filter((d) => !d.isPinned && d.isOpen && !state.disabledAppIds.includes(d.appId));
   const phoneViewport = viewportWidth <= 640;
@@ -96,22 +92,22 @@ const Dock = memo(function Dock() {
     return 0;
   };
 
-  const renderDockIcon = (appId: string, globalIndex: number, isTrash = false) => {
+  const renderDockIcon = (appId: string, globalIndex: number) => {
     const item = dockItems.find((d) => d.appId === appId);
-    if (!item && !isTrash) return null;
+    if (!item) return null;
 
     const app = getAppById(appId);
     const isBouncing = bouncingItems.has(appId);
     const isOpen = item?.isOpen || false;
     const isFocused = item?.isFocused || false;
-  const scale = isTrash ? 1 : getScale(globalIndex);
-  const ty = isTrash ? 0 : getTranslateY(globalIndex);
+    const scale = getScale(globalIndex);
+    const ty = getTranslateY(globalIndex);
 
     return (
       <div
         key={appId}
         className="relative z-10 flex flex-col items-center"
-        onMouseEnter={() => !isTrash && setHoveredIndex(globalIndex)}
+        onMouseEnter={() => setHoveredIndex(globalIndex)}
         onMouseLeave={() => setHoveredIndex(null)}
         style={{
           transformOrigin: 'bottom center',
@@ -135,29 +131,25 @@ const Dock = memo(function Dock() {
               animation: 'tooltipAppear 100ms ease',
             }}
           >
-            {isTrash ? 'Trash' : app?.name || appId}
+            {app?.name || appId}
           </div>
         )}
 
         {/* Colorful Icon */}
         <button
-          onClick={() => isTrash ? handleTrashClick() : handleAppClick(appId)}
+          onClick={() => handleAppClick(appId)}
           className="flex items-center justify-center transition-all ripple-container"
-          aria-label={isTrash ? 'Open Trash' : `Open ${app?.name || appId}`}
+          aria-label={`Open ${app?.name || appId}`}
           style={{
             borderRadius: 14,
             padding: 2,
             minWidth: phoneViewport ? 42 : undefined,
             minHeight: phoneViewport ? 42 : undefined,
-            opacity: isTrash ? 0.8 : 1,
+            opacity: 1,
             filter: hoveredIndex === globalIndex ? 'brightness(1.15)' : 'brightness(1)',
           }}
         >
-          {isTrash ? (
-            <AppIcon appId="filemanager" size={iconSize} />
-          ) : (
-            <AppIcon appId={appId} size={iconSize} />
-          )}
+          <AppIcon appId={appId} size={iconSize} />
         </button>
 
         {/* Active indicator */}
@@ -251,17 +243,6 @@ const Dock = memo(function Dock() {
           {renderDockIcon(item.appId, i)}
         </span>
       ))}
-
-      {/* Separator */}
-      {!narrowPhoneViewport && (
-        <div
-          className="mx-1 shrink-0 self-center"
-          style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.08)', borderRadius: 1 }}
-        />
-      )}
-
-      {/* Trash */}
-      {!narrowPhoneViewport && renderDockIcon('trash', -1, true)}
 
       <style>{`
         @keyframes dockSlideUp {
